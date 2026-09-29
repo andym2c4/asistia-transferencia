@@ -1,0 +1,14 @@
+{% macro hidden(huella=none, ambito=true) %}
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="hidden" name="operacion" value="{{ operacion_id() }}">
+{% if ambito and periodo is defined %}<input type="hidden" name="periodo" value="{{ periodo.strftime('%Y-%m') }}"><input type="hidden" name="nivel" value="{{ nivel }}">{% endif %}
+{% if huella %}<input type="hidden" name="huella" value="{{ huella }}">{% endif %}
+{% endmacro %}
+{% macro badge(estado) %}
+{% set labels = {'VALIDADO':'Revisado aquí','REVISADO':'Revisado aquí','IMPORTADO':'Por revisar','EN_VALIDACION':'En revisión','HISTORICA':'Versión anterior','PENDIENTE':'Pendiente','RESUELTA':'Decisión registrada','DESCARTADA':'Observación descartada','PROCESADO':'Extraído · falta revisión','PROCESANDO':'Procesando','RECIBIDO':'Recibido · por procesar','PARCIAL':'Extracción parcial','ERROR':'No se pudo procesar','NO_SOPORTADO':'Formato no soportado','BORRADOR':'Borrador','VIGENTE':'Calendario vigente'} %}
+<span class="badge {% if estado in ['VALIDADO','REVISADO','VIGENTE','RESUELTA'] %}good{% elif estado in ['ERROR','PENDIENTE','PARCIAL','NO_SOPORTADO'] %}warn{% endif %}">{{ labels.get(estado,estado) }}</span>
+{% endmacro %}
+{% macro empty(titulo,texto) %}<div class="empty"><h2>{{ titulo }}</h2><p>{{ texto }}</p></div>{% endmacro %}
+{% macro sustento(id, label='Motivo y sustento', obligatorio=true) %}
+<label for="{{ id }}">{{ label }}</label><textarea id="{{ id }}" name="motivo" maxlength="4000" {% if obligatorio %}required{% endif %} rows="3" placeholder="{{ 'Indica qué cotejaste y por qué corresponde esta decisión.' if obligatorio else 'Puedes añadir una aclaración si lo necesitas.' }}"></textarea>
+{% endmacro %}

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading"><div><span class="eyebrow">Solo desarrollo local</span><h1>Herramientas de desarrollo</h1><p>Accesos auxiliares para preparar fuentes y consultar evidencias del proyecto.</p></div></div>
+<div class="form-grid" aria-label="Herramientas disponibles">
+{% for endpoint,nombre,descripcion in herramientas %}
+<section class="panel"><h2><a href="{{ url_for('pages.' ~ endpoint) }}">{{ nombre }}</a></h2><p class="muted">{{ descripcion }}</p></section>
+{% endfor %}
+</div>
+{% endblock %}

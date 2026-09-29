@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Instituciones y personal · ASISTIA{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static',filename='instituciones.js') }}"></script>{% endblock %}
+{% block content %}
+<div id="institution-directory">
+{% set mes = mes_actualizado.strftime('%Y-%m') if mes_actualizado else '' %}
+<div class="page-heading"><div><span class="eyebrow">Directorio de RRHH</span><h1>Instituciones y personal</h1><p>Explora las instituciones y consulta su personal registrado.</p></div><a class="button primary" data-create-institution href="{{ url_for('pages.institucion_editar',q=q,nivel_ie=nivel_ie,actualizado=mes,fc=fc) }}">Nueva institución</a></div>
+<div data-directory-fragment="stats" class="stats directory-stats" aria-label="Resumen de instituciones y personal">
+  <div class="stat"><span>Instituciones registradas</span><strong>{{ total_padron }}</strong><small>Servicios educativos · código modular + anexo</small></div>
+  <div class="stat"><span>Nuevos registros de personal</span><strong>{{ nuevos if mes else 'Sin datos' }}</strong><small>{{ mes_actualizado.strftime('%m/%Y') if mes else 'Sin actualizaciones registradas' }} · personas con ingreso registrado a una institución</small></div>
+  <div class="stat"><span>Bajas informadas</span><strong>{{ bajas if mes else 'Sin datos' }}</strong><small>{{ mes_actualizado.strftime('%m/%Y') if mes else 'Sin actualizaciones registradas' }} · personas con cierre de vínculo informado</small></div>
+</div>
+<section data-directory-fragment="updates" class="panel monthly-update" aria-labelledby="actualizacion-titulo">
+  <div class="panel-heading"><div><h2 id="actualizacion-titulo">Actualizado mensual</h2><p class="muted">Cortes NEXUS y cambios de reportes, reunidos por mes de carga.</p></div>
+    {% if meses %}<form method="get" class="inline"><input type="hidden" name="nivel_ie" value="{{ nivel_ie }}"><input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="fc" value="{{ fc }}">
+      <label for="actualizado">Mes de actualización<select id="actualizado" name="actualizado">{% for m in meses %}<option value="{{ m.strftime('%Y-%m') }}" {% if m == mes_actualizado %}selected{% endif %}>{{ m.strftime('%m/%Y') }}</option>{% endfor %}</select></label><button>Ver actualización</button></form>{% endif %}
+  </div>
+  {% set incompletas = cortes_mes|rejectattr('estado_integridad','equalto','COMPLETA')|list %}
+  {% if incompletas %}<p class="notice">Hay {{ incompletas|length }} cargas NEXUS incompletas en este mes. Sus movimientos están pendientes y no se incluyen en las cifras.</p>{% endif %}
+  <p class="small muted">Movimientos de {{ niveles_directorio[nivel_ie] if nivel_ie else 'todos los niveles' }}{% if q %} · búsqueda: “{{ q }}”{% endif %}{% if filtros_columnas %} · {{ filtros_columnas|length }} filtros de columna{% endif %}.</p>
+  {% if mes %}<div class="update-origins">{% for o in origenes %}<div><h3>{{ o.nombre }}</h3><p><strong>{{ o.nuevos }}</strong> nuevos <span class="muted">·</span> <strong>{{ o.bajas }}</strong> bajas</p>{% if o.codigo == 'AUTOMATICO_IMPORTACION' %}<small class="muted">Aplicado automáticamente; no equivale a aceptación de RRHH.</small>{% endif %}</div>{% endfor %}</div>{% else %}<p class="empty">No hay fuentes de actualización registradas todavía.</p>{% endif %}
+  {% if base_inicial %}<p class="muted small">Base inicial: {{ base_inicial }} personas registradas en el primer corte disponible. Se muestran aparte de los nuevos ingresos.</p>{% endif %}
+  <details><summary>Ver cortes y cómo se cuentan los movimientos</summary>
+    <p>Los movimientos respetan el nivel, la búsqueda y los filtros de columnas elegidos abajo. Se cuenta una persona una sola vez por indicador, aunque tenga varias plazas o fuentes. Los desgloses pueden compartir personas y no se suman. El total de instituciones corresponde a todo el padrón.</p>
+    <p>“Nuevos” significa primer registro de la persona en una institución después de la base inicial del primer corte NEXUS completo; no demuestra una contratación nueva. Una reimportación o reafirmación no vuelve a contarse. “Bajas” usa un fin informado en NEXUS posterior a la base inicial y que ya alcanza la fecha del corte, o un cierre explícito desde un reporte; desaparecer de NEXUS no demuestra cese.</p>
+    <p>El mes es el de carga del archivo en horario de Lima, distinto de la fecha del corte y del mes reportado. Una revisión posterior permanece en el mes de carga de su fuente. Este resumen refleja las fuentes y revisiones disponibles ahora.</p>
+    {% if ultimo_corte %}<p>Último corte NEXUS completo disponible: <strong>{{ ultimo_corte.strftime('%d/%m/%Y') }}</strong>.</p>{% endif %}
+    {% for c in cortes_mes %}<p>Corte {{ c.fecha_corte.strftime('%d/%m/%Y') }} · {{ 'Completo' if c.estado_integridad == 'COMPLETA' else 'Carga incompleta: excluida de los movimientos' }} · {{ c.nombre_original }}</p>{% else %}<p>No se cargaron cortes NEXUS en este mes.</p>{% endfor %}
+  </details>
+</section>
+<section class="panel directory-panel" aria-labelledby="directorio-titulo">
+  <div class="panel-heading"><h2 id="directorio-titulo">Instituciones por nivel</h2><span data-directory-fragment="count" class="badge">{{ total }} de {{ total_padron }} instituciones</span></div>
+  <nav data-directory-fragment="levels" class="level-filters" aria-label="Filtrar instituciones por nivel">
+    <a data-level="" href="{{ url_for('pages.instituciones',q=q,actualizado=mes,fc=fc) }}#directorio-titulo" {% if not nivel_ie %}aria-current="true"{% endif %}>Todos los niveles <strong>{{ total_padron }}</strong></a>
+    {% for codigo,nombre in niveles_directorio.items() %}{% if conteos_nivel[codigo] %}<a href="{{ url_for('pages.instituciones',nivel_ie=codigo,q=q,actualizado=mes,fc=fc) }}#directorio-titulo" data-level="{{ codigo }}" {% if nivel_ie == codigo %}aria-current="true"{% endif %}>{{ nombre }} <strong>{{ conteos_nivel[codigo] }}</strong></a>{% endif %}{% endfor %}
+  </nav>
+  <div data-directory-fragment="types" class="institution-types" aria-label="Tipos de instituciones y cantidades">{% for tipo,n in tipos|dictsort %}<span>{{ tipo or 'Sin clasificar' }} <strong>{{ n }}</strong></span>{% endfor %}</div>
+  <form method="get" class="inline directory-search"><input type="hidden" name="nivel_ie" value="{{ nivel_ie }}"><input type="hidden" name="actualizado" value="{{ mes }}"><input type="hidden" name="fc" value="{{ fc }}"><label for="q">Buscar institución<input id="q" name="q" value="{{ q }}" type="search" autocomplete="off" maxlength="100" placeholder="Nombre, código modular o ubicación"></label><button>Buscar</button>{% if q or nivel_ie or filtros_columnas %}<a href="{{ url_for('pages.instituciones',actualizado=mes) }}#directorio-titulo">Limpiar filtros</a>{% endif %}</form>
+  <div class="directory-feedback" role="status" aria-live="polite"><span data-directory-status></span> <button type="button" class="link-button directory-retry" data-directory-retry hidden>Reintentar</button></div>
+  <p class="muted small">Personal registrado: personas distintas con vínculos conocidos, incluidos los históricos. Selecciona una fila para consultar su detalle. Desplázate dentro de la lista para ver más instituciones; la búsqueda consulta todo el padrón.</p>
+  <div data-directory-fragment="facets"><script type="application/json" data-directory-facets>{{ {'facetas':facetas,'seleccion':filtros_columnas}|tojson }}</script><div class="column-filter-summary">{% for k,regla in filtros_columnas.items() %}<button type="button" data-remove-filter="{{ k }}" class="filter-chip" aria-label="Quitar filtro de {{ columnas_directorio[k] }}">{{ columnas_directorio[k] }} · {{ regla.valores|length }} {{ ('valor excluido' if regla.valores|length == 1 else 'valores excluidos') if regla.modo == 'excluir' else ('valor seleccionado' if regla.valores|length == 1 else 'valores seleccionados') }} <span aria-hidden="true">×</span></button>{% endfor %}</div></div>
+  <div data-directory-fragment="results">{% if total_padron %}<p class="ayuda-tabla small">Desliza la tabla para consultar todas las columnas.</p><div class="table-wrap directory-scroll" tabindex="0" role="region" aria-label="Listado completo de instituciones" data-eight-rows><table class="institution-table"><thead><tr>{% for key,label in columnas_directorio.items() %}<th scope="col" aria-sort="none"><div class="column-controls"><button type="button" class="directory-sort" data-sort="{{ loop.index0 }}" disabled>{{ label }}</button><button type="button" class="column-filter" data-filter="{{ key }}" aria-label="Filtrar por {{ label }}" aria-haspopup="dialog" aria-expanded="false" title="Filtrar por {{ label }}" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></svg><span class="filter-indicator" aria-hidden="true"></span></button></div></th>{% endfor %}</tr></thead><tbody>
+    {% for i in instituciones %}<tr data-institution-row><td><a data-institution-link href="{{ url_for('pages.institucion',iid=i.institucion_educativa_id,nivel_ie=nivel_ie,q=q,actualizado=mes,fc=fc) }}">{{ i.nombre_ie }}</a><small>{{ i.nivel_modalidad }}</small></td><td>{{ i.distrito or 'Sin registrar' }}</td><td>{{ i.centro_poblado or 'Sin registrar' }}</td><td class="institution-code">{{ i.cod_mod }}<small>Anexo {{ i.anexo }}</small></td><td class="personnel-count">{{ i.personas }}</td><td><span class="badge {{ 'good' if i.calendarizacion.estado == 'Okey' else 'warn' if i.calendarizacion.estado == 'Por revisar' else '' }}">{{ i.calendarizacion.estado }}</span>{% if i.calendarizacion.anio %}<small>{{ i.calendarizacion.anio }}</small>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% endif %}{% if not instituciones %}<div class="empty"><h3>{{ 'No hay coincidencias' if total_padron else 'Todavía no hay instituciones registradas' }}</h3><p>{{ 'Prueba con otro nombre o limpia los filtros para volver al padrón.' if total_padron else 'Las instituciones aparecerán al incorporar las fuentes del padrón.' }}</p>{% if q or nivel_ie or filtros_columnas %}<a href="{{ url_for('pages.instituciones',actualizado=mes) }}">Ver todas las instituciones</a>{% endif %}</div>{% endif %}
+</div></section>
+<div class="column-popover" data-column-popover role="dialog" aria-labelledby="column-filter-title" hidden>
+  <div class="column-popover-heading"><strong id="column-filter-title"></strong><button type="button" data-close-filter aria-label="Cerrar filtro">×</button></div>
+  <label class="small" for="column-value-search">Buscar valor<input id="column-value-search" type="search" autocomplete="off" placeholder="Buscar en los valores"></label>
+  <div class="facet-list-heading"><label><input type="checkbox" data-all-values>Todos los valores</label><span>Cantidad</span></div>
+  <div class="facet-values" data-facet-values></div>
+  <p class="small muted">Cantidades de instituciones según los demás filtros.</p>
+  <button type="button" class="link-button" data-clear-column>Quitar filtro de esta columna</button>
+</div>
+</div>
+{% endblock %}

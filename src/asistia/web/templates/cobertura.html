@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <h1>Cobertura del mes</h1>
+    <p>Qué falta para cerrar {{ periodo.strftime('%m/%Y') }} en {{ niveles[nivel] }}, institución por institución.</p>
+  </div>
+  <a class="button" href="{{ url_for('pages.cobertura_csv', periodo=periodo.strftime('%Y-%m'), nivel=nivel) }}">Descargar CSV</a>
+</div>
+
+<section class="panel">
+  <h2>Desglose del universo</h2>
+  {% if resumen.total == 0 %}
+    <p class="notice" role="status">No hay instituciones de este nivel en el universo conocido. El denominador es cero: no aplica ningún porcentaje.</p>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Estado</th><th>Instituciones</th><th>Del universo</th></tr></thead>
+      <tbody>
+        {% for e in estados %}
+        <tr {% if e != 'REVISADO' and resumen.por_estado[e] %}class="row-warn"{% endif %}>
+          <td>{{ etiquetas_estado[e] }}</td>
+          <td>{{ resumen.por_estado[e] }}</td>
+          <td>{{ '%.1f'|format(100 * resumen.por_estado[e] / resumen.total) }} %</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><th>Universo</th><th>{{ resumen.total }}</th><th>100,0 %</th></tr></tfoot>
+    </table>
+  </div>
+  <p class="muted">
+    Universo: {{ resumen.universo }}
+    {% if sin_nivel_canonico %}
+      Además, {{ sin_nivel_canonico }} institución(es) registrada(s) no tienen un nivel educativo
+      canónico (por ejemplo la propia UGEL): no pertenecen a ningún nivel y por eso no están
+      contadas arriba.
+    {% endif %}
+  </p>
+  <p class="muted">Pendientes de identidad en este nivel: {{ resumen.filas_sin_identidad }} · Alertas sin resolver: {{ resumen.alertas_pendientes }}</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Estimación de esfuerzo <span class="badge">{{ estimacion.etiqueta }}</span></h2>
+  {% if estimacion.reduccion_pct is none %}
+    <p class="notice" role="status">{{ estimacion.nota }}</p>
+  {% else %}
+    <p class="notice danger" role="status">
+      <strong>Esto no es una medición.</strong> M01 (tiempo real de RRHH) sigue sin medir. La cifra
+      de abajo sale de aplicar pesos declarados al estado de resolución, no de cronometrar a nadie.
+    </p>
+    <div class="stat"><span>Esfuerzo estimado evitado</span><strong>{{ estimacion.reduccion_pct }} %</strong></div>
+    <p>Banda de sensibilidad: <strong>{{ estimacion.reduccion_pct_banda[0] }} % – {{ estimacion.reduccion_pct_banda[1] }} %</strong> (variando cada peso ±50 %).</p>
+    {% if 'ATENCION' in estimacion.nota %}
+      <p class="notice danger" role="status">{{ estimacion.nota.split('ATENCION:')[1] }}</p>
+    {% endif %}
+    {% if estimacion.tiempo_manual_min %}
+      <p>Con el tiempo manual declarado ({{ estimacion.declaracion.fuente }}, {{ estimacion.declaracion.fecha }}):
+        de {{ estimacion.tiempo_manual_min[0] }}–{{ estimacion.tiempo_manual_min[1] }} min
+        a {{ '%.0f'|format(estimacion.tiempo_asistido_min[0]) }}–{{ '%.0f'|format(estimacion.tiempo_asistido_min[1]) }} min.</p>
+    {% elif estimacion.estado_calculo == 'NO_APLICA_A_ESTE_GRANO' %}
+      <p class="muted">El tiempo manual que declara RRHH es para <strong>todas</strong> las instituciones a la vez, no por nivel. Por eso aquí solo se publica la reducción relativa de {{ niveles[nivel] }}; el tiempo en semanas está más abajo, calculado una sola vez para toda la UGEL.</p>
+    {% else %}
+      <p class="muted">Falta la declaración de tiempo manual de RRHH y su unidad: el tiempo absoluto queda <strong>NO_CALCULABLE</strong>. Solo se publica la reducción relativa.</p>
+    {% endif %}
+
+    <details>
+      <summary>Supuestos que producen esta cifra</summary>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Estado</th><th>Peso</th><th>Por qué</th></tr></thead>
+          <tbody>
+            {% for e in estados %}
+            <tr><td>{{ etiquetas_estado[e] }}</td><td>{{ estimacion.supuestos.peso(e) }}</td><td>{{ estimacion.supuestos.justificacion[e] }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Limitaciones declaradas:</strong></p>
+      <ul>{% for l in estimacion.supuestos.limitaciones %}<li>{{ l }}</li>{% endfor %}</ul>
+    </details>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Todo el mes de la UGEL <span class="badge">{{ estimacion_ugel.etiqueta }}</span></h2>
+  <p>El tiempo que RRHH declara corresponde al consolidado de <strong>todas</strong> las instituciones, no a un nivel suelto. Por eso se calcula una sola vez sobre el universo completo: <strong>{{ agregado.total }}</strong> instituciones en los siete niveles.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Estado</th><th>Instituciones</th><th>Del universo</th></tr></thead>
+      <tbody>
+        {% for e in estados %}
+        <tr {% if e != 'REVISADO' and agregado.por_estado[e] %}class="row-warn"{% endif %}>
+          <td>{{ etiquetas_estado[e] }}</td>
+          <td>{{ agregado.por_estado[e] }}</td>
+          <td>{% if agregado.total %}{{ '%.1f'|format(100 * agregado.por_estado[e] / agregado.total) }} %{% else %}No aplica{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if estimacion_ugel.tiempo_manual_min %}
+    <p>
+      <strong>Tiempo manual declarado:</strong>
+      {{ '%.1f'|format(estimacion_ugel.tiempo_manual_min[0] / 2400) }}–{{ '%.1f'|format(estimacion_ugel.tiempo_manual_min[1] / 2400) }} semanas de jornada completa
+      ({{ estimacion_ugel.tiempo_manual_min[0] }}–{{ estimacion_ugel.tiempo_manual_min[1] }} min).<br>
+      <strong>Esfuerzo asistido estimado:</strong>
+      {{ '%.1f'|format(estimacion_ugel.tiempo_asistido_min[0] / 2400) }}–{{ '%.1f'|format(estimacion_ugel.tiempo_asistido_min[1] / 2400) }} semanas
+      ({{ '%.0f'|format(estimacion_ugel.tiempo_asistido_min[0]) }}–{{ '%.0f'|format(estimacion_ugel.tiempo_asistido_min[1]) }} min),
+      es decir una reducción estimada de <strong>{{ estimacion_ugel.reduccion_pct }} %</strong>
+      (banda {{ estimacion_ugel.reduccion_pct_banda[0] }} %–{{ estimacion_ugel.reduccion_pct_banda[1] }} %).
+    </p>
+    <p class="muted">Origen del tiempo manual: {{ estimacion_ugel.declaracion.fuente }} ({{ estimacion_ugel.declaracion.fecha }}). Conversión declarada: 1 semana = 5 jornadas de 8 horas. No es un tiempo cronometrado.</p>
+    <details>
+      <summary>Limitaciones que condicionan esta comparación</summary>
+      <ul>{% for l in estimacion_ugel.supuestos.limitaciones %}<li>{{ l }}</li>{% endfor %}</ul>
+    </details>
+  {% else %}
+    <p class="notice" role="status">{{ estimacion_ugel.nota }}</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Instituciones</h2>
+  <form method="get" class="inline">
+    <input type="hidden" name="periodo" value="{{ periodo.strftime('%Y-%m') }}">
+    <input type="hidden" name="nivel" value="{{ nivel }}">
+    <label for="estado">Estado</label>
+    <select id="estado" name="estado">
+      <option value="todos" {% if filtro == 'todos' %}selected{% endif %}>Todos</option>
+      {% for e in estados %}<option value="{{ e }}" {% if filtro == e %}selected{% endif %}>{{ etiquetas_estado[e] }}</option>{% endfor %}
+    </select>
+    <button>Filtrar</button>
+  </form>
+  <p class="muted">El filtro cambia lo que se muestra, no el universo ni los porcentajes de arriba.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Institución</th><th>Código y anexo</th><th>Estado</th><th>Personas</th><th>Sin identidad</th><th>Alertas</th><th>Calendario</th></tr></thead>
+      <tbody>
+        {% for i in instituciones %}
+        <tr {% if i.estado != 'REVISADO' %}class="row-warn"{% endif %}>
+          <td><a href="{{ url_for('pages.institucion', iid=i.institucion_educativa_id) }}" target="_blank" rel="noopener">{{ i.nombre_ie }}</a></td>
+          <td>{{ i.cod_mod }} · {{ i.anexo }}</td>
+          <td>{{ etiquetas_estado[i.estado] }}{% if i.version_maxima and i.version_maxima > 1 %} <span class="badge">v{{ i.version_maxima }}</span>{% endif %}</td>
+          <td>{{ i.filas }}</td>
+          <td>{{ i.sin_identidad }}</td>
+          <td>{{ i.alertas_pendientes }}{% if i.alertas_criticas %} ({{ i.alertas_criticas }} críticas){% endif %}</td>
+          <td>
+            {% if i.calendario_estado == 'AUSENTE' %}<span class="muted">Sin calendario</span>
+            {% else %}{{ i.calendario_estado|capitalize }}{% if i.calendario_dias_sin_determinar %} · {{ i.calendario_dias_sin_determinar }} días sin determinar{% endif %}{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="muted">Ninguna institución en este estado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

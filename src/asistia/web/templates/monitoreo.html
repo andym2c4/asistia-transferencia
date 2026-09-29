@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Monitoreo · Isolation Forest · ASISTIA{% endblock %}
+{% block content %}
+<div class="page-heading"><div><span class="eyebrow">Perfiles mensuales · revisión documental</span><h1>Monitoreo · Isolation Forest</h1><p class="muted">Identifica qué perfiles revisar primero y cuáles necesitan más datos.</p></div><a class="button" href="{{ url_for('pages.experimental') }}">Gestionar lotes y entrenamiento</a></div>
+<nav class="actions" aria-label="Fuente del monitoreo"><a class="button" href="{{ url_for('pages.monitoreo_diario') }}">Asistencia y calendario</a><span class="badge">Resúmenes DRE · modelo anterior</span></nav>
+{% if not lote %}
+<section class="panel"><h2>Aún no hay perfiles para monitorear</h2><p>Crea un lote de reportes mensuales y ejecuta su modelo. Aquí aparecerán la cobertura, las puntuaciones y sus fuentes.</p><a class="button primary" href="{{ url_for('pages.experimental') }}">Preparar perfiles mensuales</a></section>
+{% else %}
+{% set eid = experimento.ml_experimento_id if experimento else none %}
+{% set contexto = dict(lote=lote.ml_lote_id, experimento=eid, mes=mes_elegido, nivel_filtro=nivel_filtro) %}
+<div class="notice"><strong>Monitoreo experimental con datos sintéticos derivados de DRE.</strong> Las alertas proponen cotejar reportes recibidos antes del cierre. La utilidad real para RRHH aún no está medida. La puntuación no acredita una falta ni determina remuneración.</div>
+<section class="panel monitor-corte" aria-labelledby="corte-titulo">
+  <h2 id="corte-titulo">Corte de datos y modelo</h2>
+  <div class="monitor-selectores">
+    <form method="get" class="scope"><label>Lote de perfiles <select name="lote">{% for l in lotes %}<option value="{{ l.ml_lote_id }}" {% if l.ml_lote_id == lote.ml_lote_id %}selected{% endif %}>{{ l.creado_en.strftime('%d/%m/%Y %H:%M') }} · {{ l.motivo|truncate(65) }}</option>{% endfor %}</select></label><button>Elegir lote</button></form>
+    {% if experimentos %}<form method="get" class="scope"><input type="hidden" name="lote" value="{{ lote.ml_lote_id }}"><label>Experimento conservado <select name="experimento">{% for e in experimentos %}<option value="{{ e.ml_experimento_id }}" {% if e.ml_experimento_id == eid %}selected{% endif %}>{{ e.creado_en.strftime('%d/%m/%Y %H:%M') }} · {{ e.version }} · {{ e.ml_experimento_id|string|truncate(8, True, '') }}</option>{% endfor %}</select></label><button>Ver experimento</button></form>{% endif %}
+  </div>
+  <p class="small muted">Lote: {{ lote.motivo }}. Las versiones mantienen sus resultados separados. Los nombres y niveles se consultan en el padrón actual.</p>
+  {% if experimento %}<p><span class="badge good">Modelo entrenado</span> Puntuaciones calculadas el <strong>{{ experimento.creado_en.strftime('%d/%m/%Y %H:%M %Z') }}</strong>. Se muestran resultados conservados; actualizar la vista no vuelve a entrenar.</p>{% else %}<div class="notice"><strong>Este lote aún no tiene modelo ejecutado.</strong> Los perfiles disponibles se mantienen visibles. <a href="{{ url_for('pages.experimental_lote', lote_id=lote.ml_lote_id) }}">Ir al lote para ejecutar Isolation Forest</a>.</div>{% endif %}
+</section>
+<section class="panel" aria-labelledby="alcance-titulo">
+  <h2 id="alcance-titulo">Mes que quieres revisar</h2>
+  <form method="get" class="scope" id="monitor-ambito">
+    <input type="hidden" name="lote" value="{{ lote.ml_lote_id }}">{% if eid %}<input type="hidden" name="experimento" value="{{ eid }}">{% endif %}
+    <label>Mes de destino <select name="mes">{% for m in meses %}<option {% if m == mes_elegido %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></label>
+    <label>Nivel <select name="nivel_filtro"><option value="TODOS">Todos los niveles</option>{% for codigo,nombre in niveles.items() %}<option value="{{ codigo }}" {% if codigo == nivel_filtro %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select></label>
+    <button class="primary">Consultar mes</button>
+  </form>
+  <p class="muted small">Mes fuente: {{ meses_fuente|join(', ') or 'Sin reportes' }}. Cambiar el período de destino no crea observaciones nuevas.</p>
+</section>
+<div class="stats monitor-stats" aria-label="Resumen del mes y nivel">
+  <div class="stat"><span>Perfiles del mes y nivel</span><strong data-metrica="total">{{ resumen.total }}</strong><small>Una institución por perfil mensual</small></div>
+  <div class="stat"><span>Priorizados por el modelo</span><strong data-metrica="priorizados">{{ resumen.priorizados if experimento else '—' }}</strong><small>{{ resumen.puntuados }} puntuados en este ámbito</small></div>
+  <div class="stat"><span>Sin datos suficientes</span><strong data-metrica="sin_datos">{{ resumen.sin_datos }}</strong><small>Requieren cotejo de la fuente</small></div>
+</div>
+{% if resumen.sin_modelo or resumen.sin_puntuacion %}<p class="notice">{{ resumen.sin_modelo + resumen.sin_puntuacion }} perfiles utilizables aún no tienen puntuación en este corte. <a href="{{ url_for('pages.experimental_lote', lote_id=lote.ml_lote_id) }}">Consultar el experimento del lote</a>.</p>{% endif %}
+<section class="panel" aria-labelledby="lista-titulo">
+  <div class="panel-heading"><h2 id="lista-titulo">Perfiles para revisar</h2><span class="badge">{{ mes_elegido }} · {{ niveles.get(nivel_filtro, 'Todos los niveles') }}</span></div>
+  <p>El puesto y el cupo se fijaron sobre el mes completo. Filtrar por nivel o institución conserva ese orden. Estar fuera del cupo no demuestra que el reporte sea correcto.</p>
+  {% for ref in referencias_mes %}<p class="small muted">Mes fuente {{ ref.mes }}: cupo propuesto de {{ ref.cupo_propuesto }} entre {{ ref.reportes_puntuados }} puntuados; {{ ref.empates_en_umbral }} perfiles comparten la puntuación del límite. El cupo usa la configuración conservada y los empates se ordenan por ID institucional.</p>{% endfor %}
+  <form method="get" class="scope" id="monitor-lista">
+    {% for key,value in contexto.items() %}{% if value is not none %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
+    <label>Mostrar <select name="estado">{% for codigo,nombre in estados_monitor.items() %}<option value="{{ codigo }}" {% if codigo == estado_filtro %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select></label>
+    <label>Institución o código <input type="search" name="q" value="{{ q }}" maxlength="120" placeholder="Nombre o código modular"></label><button>Filtrar lista</button>
+    <a href="{{ url_for('pages.monitoreo', estado='TODOS', **contexto) }}#lista-titulo">Quitar filtros de lista</a>
+  </form>
+  <p class="small muted">{{ visibles }} coincidencias · Las tarjetas mantienen el total del mes y nivel, sin restringirse a esta búsqueda.</p>
+  <div class="actions"><a href="{{ url_for('pages.monitoreo', estado='PRIORIZADO', **contexto) }}#lista-titulo">Ver priorizados</a><a href="{{ url_for('pages.monitoreo', estado='SIN_DATOS', **contexto) }}#lista-titulo">Ver perfiles sin datos suficientes</a></div>
+  {% if filas %}
+  <p class="ayuda-tabla">Desliza la tabla para consultar puntuación e indicadores. La institución abre su evidencia.</p>
+  <div class="table-wrap" role="region" aria-label="Perfiles del monitoreo" tabindex="0"><table class="monitor-tabla">
+    <thead><tr><th>Institución y fuente</th><th>Prioridad del mes</th><th>Estado</th><th>Indicador para cotejar</th></tr></thead>
+    <tbody>{% for r in filas %}<tr data-reporte="{{ r.ml_reporte_mensual_id }}" data-estado="{{ r.estado_monitor }}"><td><a href="{{ url_for('pages.monitoreo_reporte', reporte_id=r.ml_reporte_mensual_id, experimento=eid, mes=mes_elegido, nivel_filtro=nivel_filtro, estado=estado_filtro, q=q, pagina=pagina) }}">{{ r.nombre_ie }}</a><small>{{ r.cod_mod }} / {{ r.anexo }} · {{ niveles.get(r.nivel, r.nivel or 'Nivel pendiente') }}<br>Fuente {{ r.periodo_fuente.strftime('%Y-%m') }} · Ver conteos y documento</small></td>
+    <td>{% if r.puntuacion %}<strong>Puesto {{ r.puntuacion.puesto }}</strong><small>IF {{ '%.4f'|format(r.puntuacion.score_if) }}<br>{{ r.puntuacion.particion|replace('_',' ')|capitalize }}</small>{% else %}Sin puntuación{% endif %}</td>
+    <td><span class="badge {% if r.estado_monitor == 'PRIORIZADO' %}good{% elif r.estado_monitor != 'FUERA_CUPO' %}warn{% endif %}">{{ estados_monitor[r.estado_monitor] }}</span></td>
+    <td>{% if r.puntuacion and r.puntuacion.indicadores_a_revisar %}{% set i = r.puntuacion.indicadores_a_revisar[0] %}{{ variables_monitor.get(i.variable, i.variable) }}<small>Perfil {{ '%.3f'|format(i.valor) }} · mediana de entrenamiento {{ '%.3f'|format(i.mediana_entrenamiento) }}</small>{% elif r.estado_monitor == 'SIN_DATOS' %}Faltan conteos de días utilizables. Abre la fuente para cotejar vacíos o valores fuera de rango.{% else %}Consulta el lote y el estado de su experimento.{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="small muted">Los indicadores comparan valores con la mediana de entrenamiento; no son una explicación causal del modelo. Una puntuación IF mayor indica un perfil más inusual, no una probabilidad.</p>
+  <div class="actions" aria-label="Páginas de perfiles">{% if pagina > 1 %}<a href="{{ url_for('pages.monitoreo', estado=estado_filtro, q=q, pagina=pagina-1, **contexto) }}#lista-titulo">← Anterior</a>{% endif %}<span>Página {{ pagina }} de {{ paginas }}</span>{% if pagina < paginas %}<a href="{{ url_for('pages.monitoreo', estado=estado_filtro, q=q, pagina=pagina+1, **contexto) }}#lista-titulo">Siguiente →</a>{% endif %}</div>
+  {% else %}<div class="empty" role="status"><h3>No hay perfiles que coincidan con estos filtros</h3><p>Quita la búsqueda o cambia el estado para consultar los demás perfiles del mes.</p></div>{% endif %}
+</section>
+<section class="panel" aria-labelledby="meses-titulo">
+  <h2 id="meses-titulo">Cobertura por mes del lote</h2><p class="small muted">Mismo nivel seleccionado · Escala común desde cero hasta {{ escala }} perfiles. La búsqueda y el estado de la lista no cambian esta comparación.</p>
+  <div class="monitor-leyenda"><span><i class="monitor-dot monitor-priorizado"></i>Priorizados</span><span><i class="monitor-dot monitor-resto"></i>Fuera del cupo</span><span><i class="monitor-dot monitor-excluido"></i>Sin datos</span><span><i class="monitor-dot monitor-pendiente"></i>Sin puntuación disponible</span></div>
+  {% for e in evolucion %}<div class="monitor-mes"><a href="{{ url_for('pages.monitoreo', lote=lote.ml_lote_id, experimento=eid, mes=e.mes, nivel_filtro=nivel_filtro) }}" {% if e.mes == mes_elegido %}aria-current="date"{% endif %}>{{ e.mes }}</a><div><svg viewBox="0 0 300 14" preserveAspectRatio="none" class="monitor-barra" aria-hidden="true"><rect width="300" height="14" class="monitor-fondo"/><rect width="{{ 300 * e.priorizados / escala }}" height="14" class="monitor-priorizado"/><rect x="{{ 300 * e.priorizados / escala }}" width="{{ 300 * e.fuera_cupo / escala }}" height="14" class="monitor-resto"/><rect x="{{ 300 * e.puntuados / escala }}" width="{{ 300 * e.sin_datos / escala }}" height="14" class="monitor-excluido"/><rect x="{{ 300 * (e.puntuados + e.sin_datos) / escala }}" width="{{ 300 * (e.sin_modelo + e.sin_puntuacion) / escala }}" height="14" class="monitor-pendiente"/></svg><p class="small">{{ e.total }} perfiles: {{ e.priorizados }} priorizados · {{ e.fuera_cupo }} fuera del cupo · {{ e.sin_datos }} sin datos · {{ e.sin_modelo + e.sin_puntuacion }} sin puntuación disponible. Fuente {{ e.origenes|join(', ') }}.</p></div></div>{% endfor %}
+</section>
+{% if experimento %}{% set config = experimento.manifiesto.configuracion %}
+<section class="panel" aria-labelledby="modelo-titulo">
+  <div class="panel-heading"><h2 id="modelo-titulo">El modelo que respalda este monitoreo</h2><span class="badge good">Isolation Forest · {{ config.version }}</span></div>
+  <p>Aprende combinaciones de los conteos mensuales para ordenar perfiles inusuales sin necesitar etiquetas previas de anomalía.</p>
+  <dl class="monitor-modelo"><div><dt>Entrenamiento</dt><dd>{{ experimento.manifiesto.particiones.ENTRENAMIENTO.filas }} perfiles</dd></div><div><dt>Bosque conservado</dt><dd>{{ config.n_estimators }} árboles · muestra {{ config.max_samples }}</dd></div><div><dt>Variables</dt><dd>{{ config.features|length }} · imputación por mediana</dd></div><div><dt>Cupo propuesto</dt><dd>{{ '%.0f'|format(config.presupuesto_revision * 100) }} % de los puntuados de cada mes</dd></div></dl>
+  {% if experimento.manifiesto.preprocesamiento.variables_constantes_train %}<div class="notice"><strong>Limitación observada en el entrenamiento:</strong> {% for f in experimento.manifiesto.preprocesamiento.variables_constantes_train %}{{ variables_monitor.get(f, f) }}{% if not loop.last %}; {% endif %}{% endfor %}. Estas variables fueron constantes y el modelo no aprende a distinguir sus cambios.</div>{% endif %}
+  <details><summary>Consultar variables, particiones y versión</summary><ul>{% for f in config.features %}<li>{{ variables_monitor.get(f, f) }}</li>{% endfor %}</ul><ul>{% for m,p in config.particiones_origen.items() %}<li>Fuente {{ m }}: {{ p|capitalize }}</li>{% endfor %}</ul><p>Semilla {{ config.semilla }} · scikit-learn {{ config.sklearn }}. Experimento <code>{{ eid }}</code>.</p><p>Huella del modelo conservado: <code>{{ experimento.manifiesto.modelo_sha256 }}</code>.</p></details>
+  <div class="actions"><a class="button" href="{{ url_for('pages.experimental_paquete', experimento_id=eid) }}">Descargar modelo y expediente de este corte</a><a href="{{ url_for('pages.experimental_lote', lote_id=lote.ml_lote_id) }}">Consultar evaluación y gestionar el lote</a></div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% from 'calendario_revision.html' import revision with context %}
+<section class="report-calendar annual-calendar" aria-labelledby="report-calendar-heading">
+<div class="report-pane-heading"><h2 id="report-calendar-heading">Calendarización del mes reportado</h2><div class="report-heading-actions"><span class="badge {{ 'good' if calendario_mes and calendario_mes.version.estado == 'VIGENTE' else 'warn' }}" data-report-calendar-status>Estado: {{ 'Vigente' if calendario_mes and calendario_mes.version.estado == 'VIGENTE' else ('Pendiente de aprobación' if calendario_mes else 'Sin calendario') }}</span>{% if calendario_mes and reporte.institucion_educativa_id %}<a href="{{ url_for('pages.institucion',iid=reporte.institucion_educativa_id,anio_calendario=reporte.periodo.year,mes=reporte.periodo.month) }}#calendario-institucion-titulo" target="_blank" rel="noopener">Ver calendario de la institución ↗</a>{% endif %}</div></div>
+{% if calendario_mes %}{% set cv=calendario_mes.version %}
+{% if cv.estado != 'VIGENTE' %}<p class="notice">Pendiente de aprobación. Este calendario todavía no es vigente.</p>{% endif %}
+{% if calendario_mes.ultima.calendarizacion_version_id != cv.calendarizacion_version_id %}<p class="notice">Hay una versión {{ calendario_mes.ultima.version }} posterior ({{ badge(calendario_mes.ultima.estado) }}). Aquí se muestra la versión {{ cv.version }} ({{ badge(cv.estado) }}).</p>{% endif %}
+{% if cv.procedencia_extraccion.get('tipo') == 'DERIVADO_2025' %}<p class="notice danger">Basado en información de 2025. Esta proyección no acredita el calendario real de {{ reporte.periodo.year }}.</p>{% endif %}
+<p class="small day-sync-status" data-day-sync-status="calendar" role="status"></p>
+<div class="report-month-calendar" data-report-calendar-scroll data-aligned="false" role="group" aria-label="Calendario de {{ calendario_mes.nombre_mes }} {{ reporte.periodo.year }}">
+{% for d in calendario_mes.dias %}<div data-group="{{ d.grupo }}" data-calendar-date="{{ d.fecha }}" data-weekday="{{ d.fecha.weekday()+1 }}"><button type="button" class="annual-day" data-calendar-hint="{{ d.detalle }}" title="{{ d.detalle }}" aria-label="{{ d.detalle }}"><span>{{ '%02d'|format(d.fecha.day) }} <small>{{ ['Lu','Ma','Mi','Ju','Vi','Sá','Do'][d.fecha.weekday()] }}</small></span><span class="annual-code">{{ d.simbolo }}{% if d.aviso %}<sup>!</sup>{% endif %}</span></button></div>{% endfor %}
+</div>
+<div class="report-calendar-legend" aria-label="Leyenda del calendario">
+<div class="annual-legend-items">{% for c in calendario_mes.leyenda %}<div class="annual-legend-item"><span class="annual-swatch" data-group="{{ c.grupo or '' }}">{{ c.simbolo }}</span><span>{{ c.nombre }}{% if c.simbolo != c.codigo %}<small class="muted"> · {{ c.codigo }}</small>{% endif %}</span>{% if c.avisos %}<button type="button" class="annual-warning" data-calendar-hint="{{ c.codigo }}: {{ c.avisos|join('. ') }}" title="{{ c.avisos|join('. ') }}" aria-label="Avisos de {{ c.codigo }}: {{ c.avisos|join('. ') }}">!</button>{% endif %}</div>{% endfor %}
+{% set simbolos = calendario_mes.dias|map(attribute='simbolo')|list %}
+{% if '!' in simbolos or calendario_mes.dias|selectattr('aviso')|list or calendario_mes.leyenda|selectattr('avisos')|list %}<span class="small muted">! Por confirmar</span>{% endif %}
+{% for simbolo, significado in [('∅','Sin asignar'),('○','Vacío recibido'),('·','Sin registro'),('—','No aplica')] %}{% if simbolo in simbolos %}<span class="small muted">{{ simbolo }} {{ significado }}</span>{% endif %}{% endfor %}
+</div>
+</div>
+{{ revision(cv,calendario_mes.revision,'reporte',reporte.periodo.month,reporte.reporte_asistencia_id,mostrar_confirmado=false) }}
+<div class="annual-tooltip" id="annual-tooltip" role="tooltip" hidden></div>
+{% else %}<p class="empty">{% if reporte.institucion_educativa_id %}No hay un calendario disponible para esta institución en {{ reporte.periodo.year }}.{% else %}Vincula el reporte con una institución para consultar su calendario.{% endif %}</p>{% endif %}
+</section>

@@ -1,0 +1,15 @@
+{% from 'macros.html' import hidden,sustento with context %}
+{% macro regla_campos(dominio,r) %}
+<label>Clasificación por tipo de remuneración<select name="remuneracion"><option value="">Pendiente de definir</option><option value="SI" {% if r.es_remunerado is sameas true %}selected{% endif %}>Remunerado</option><option value="NO" {% if r.es_remunerado is sameas false %}selected{% endif %}>No remunerado</option></select></label>
+{% if dominio == 'asistencia' %}<label>¿Representa una ausencia?<select name="es_falta"><option value="">Conservar lo indicado por la fuente</option><option value="SI" {% if r.es_falta is sameas true %}selected{% endif %}>Sí</option><option value="NO" {% if r.es_falta is sameas false %}selected{% endif %}>No</option></select></label>
+{% else %}<label>Agrupación para contar días esperados<select name="grupo_actividad"><option value="">Conservar lo indicado por la fuente</option>{% for v,n in [('LECTIVO','Lectivo'),('GESTION','Gestión'),('NO_LECTIVO_NI_GESTION','No lectivo ni de gestión')] %}<option value="{{ v }}" {% if r.grupo_actividad == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>{% endif %}
+<p class="small">Una regla de remuneración pendiente conserva lo que la fuente indique explícitamente; si tampoco lo indica, el día sigue pendiente.</p>
+{% endmacro %}
+{% macro documento(d,dominio) %}<a href="{{ url_for('pages.reporte',rid=d.id) if dominio=='asistencia' else url_for('pages.calendario',cvid=d.id) }}">{{ d.nombre_ie }}</a><small class="catalogo-meta">{{ d.cod_mod }} · anexo {{ d.anexo }} · {{ d.periodo }} · {{ d.nivel }} · {{ d.estado }}</small>{% endmacro %}
+
+{% macro resumen_regla(dominio,r) %}
+{% from 'leyenda.html' import pago %}
+{{ pago(r.get('es_remunerado')) }}
+{% if dominio=='asistencia' %}<small class="catalogo-meta">Ausencia: {{ 'sí' if r.get('es_falta') is sameas true else 'no' if r.get('es_falta') is sameas false else 'sin definir' }}</small>
+{% else %}<small class="catalogo-meta">Días esperados: {{ {'LECTIVO':'lectivo','GESTION':'gestión','NO_LECTIVO_NI_GESTION':'no lectivo ni de gestión'}.get(r.get('grupo_actividad'),'sin definir') }}</small>{% endif %}
+{% endmacro %}

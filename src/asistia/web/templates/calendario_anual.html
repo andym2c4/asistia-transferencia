@@ -1,0 +1,21 @@
+<div class="annual-calendar" id="dias" data-year="{{ calendario.anio }}">
+  <div class="panel-heading"><h3>Calendario anual {{ calendario.anio }}</h3><a href="{{ enlace_leyenda }}">Revisar leyendas</a></div>
+  <p class="muted small">Los doce meses en una vista. Consulta los símbolos y avisos con el cursor, el teclado o al tocarlos.</p>
+  <div class="table-wrap annual-scroll" tabindex="0" role="region" aria-label="Calendario anual de {{ calendario.anio }}">
+    <table class="annual-grid" aria-label="Programación de los doce meses de {{ calendario.anio }}">
+      <colgroup><col class="annual-month-col">{% for _ in range(42) %}<col>{% endfor %}{% for _ in range(5) %}<col class="annual-total-col">{% endfor %}</colgroup>
+      <thead><tr><th rowspan="2" scope="col">Mes</th>{% for n in range(1,7) %}<th colspan="7" scope="colgroup">Semana {{ n }}</th>{% endfor %}<th colspan="5" scope="colgroup">Días por actividad</th></tr>
+      <tr>{% for _ in range(6) %}{% for d in ['Lu','Ma','Mi','Ju','Vi','Sá','Do'] %}<th scope="col">{{ d }}</th>{% endfor %}{% endfor %}{% for g,label in [('LECTIVO','L'),('GESTION','G'),('NO_LECTIVO_NI_GESTION','N'),('','?'),('NO_APLICA','—')] %}<th scope="col" data-group="{{ g }}" title="{{ {'LECTIVO':'Lectivos','GESTION':'Gestión','NO_LECTIVO_NI_GESTION':'No lectivos ni de gestión','':'Actividad sin determinar','NO_APLICA':'No aplica'}.get(g) }}">{{ label }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for m in anual.meses %}<tr data-annual-month="{{ m.numero }}"><th scope="row">{{ m.nombre }}</th>
+      {% for d in m.celdas %}{% if d %}<td data-group="{{ d.grupo }}" data-fecha="{{ d.fecha }}"><button type="button" class="annual-day" data-calendar-hint="{{ d.detalle }}" title="{{ d.detalle }}" aria-label="{{ d.detalle }}"><span class="annual-date">{{ d.fecha.day }}</span><span class="annual-code">{{ d.simbolo }}{% if d.aviso %}<sup>!</sup>{% endif %}</span></button></td>{% else %}<td class="annual-outside" aria-hidden="true"></td>{% endif %}{% endfor %}
+      {% for g in ['LECTIVO','GESTION','NO_LECTIVO_NI_GESTION','','NO_APLICA'] %}<td class="annual-total" data-group="{{ g }}">{{ m.conteos[g] }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+      <tfoot><tr><th scope="row" colspan="43">Total de días del año</th>{% for g in ['LECTIVO','GESTION','NO_LECTIVO_NI_GESTION','','NO_APLICA'] %}<td class="annual-total" data-group="{{ g }}">{{ anual.totales[g] }}</td>{% endfor %}</tr></tfoot>
+    </table>
+  </div>
+  <div class="annual-legend" aria-label="Leyenda del calendario">
+    <h3>Leyenda de esta institución</h3>
+    <div class="annual-legend-items">{% for c in anual.leyenda %}<div class="annual-legend-item"><span class="annual-swatch" data-group="{{ c.grupo or '' }}">{{ c.simbolo }}</span><span>{{ c.nombre }}{% if c.simbolo != c.codigo %}<small class="muted"> · {{ c.codigo }}</small>{% endif %}</span>{% if c.avisos %}<button type="button" class="annual-warning" data-calendar-hint="{{ c.codigo }}: {{ c.avisos|join('. ') }}" title="{{ c.avisos|join('. ') }}" aria-label="Avisos de {{ c.codigo }}: {{ c.avisos|join('. ') }}">!</button>{% endif %}</div>{% else %}<p class="muted">La fuente no tiene una leyenda definida.</p>{% endfor %}</div>
+    <p class="small muted">! Por confirmar · ∅ Sin asignar por revisión · ○ Vacío recibido · · Sin registro · — No aplica. Totales: L = lectivos, G = gestión, N = no lectivos ni de gestión, ? = actividad sin determinar, — = no aplica. Una remuneración pendiente no cambia la actividad conocida.</p>
+  </div>
+  <div class="annual-tooltip" id="annual-tooltip" role="tooltip" hidden></div>
+</div>

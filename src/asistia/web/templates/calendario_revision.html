@@ -1,0 +1,19 @@
+{% from 'macros.html' import hidden with context %}
+{% macro original(cv) %}
+{% if cv.documento_recibido_id %}<details class="calendar-review-source"><summary>Previsualizar original del calendario <span class="small muted">· mostrar / ocultar</span></summary><p class="small">Solo lectura. Usa ↶ / ↷ para girar la vista, zoom para ampliar y las barras para desplazarte. <a href="{{ url_for('pages.fuente_calendario',cvid=cv.calendarizacion_version_id) }}" target="_blank" rel="noopener">Ampliar ↗</a></p><iframe loading="lazy" allowfullscreen src="{{ url_for('pages.fuente_calendario',cvid=cv.calendarizacion_version_id) }}" title="Documento original del calendario"></iframe></details>{% else %}<p class="muted">Esta versión no tiene un documento original disponible para previsualizar.</p>{% endif %}
+{% endmacro %}
+{% macro revision(cv, propuesta, destino='calendario', mes=1, reporte_id=none, mostrar_original=true, mostrar_enlace=true, mostrar_confirmado=true) %}
+<div class="calendar-review" data-calendar-review>
+{% if mostrar_original %}{{ original(cv) }}{% endif %}
+{% if propuesta.confirmado %}{% if mostrar_confirmado %}<p class="notice" data-calendar-confirmed>Calendarización anual confirmada y vigente.</p>{% if cv.procedencia_extraccion.get("confirmacion_total") %}<a class="small" href="{{ url_for('pages.calendario',cvid=cv.procedencia_extraccion.confirmacion_total.padre,mes=mes) }}">Consultar la versión anterior a esta confirmación</a>{% endif %}
+{% endif %}
+{% else %}<div class="calendar-confirm">
+<h3>Confirmar toda la calendarización {{ cv.anio }}</h3>
+<p>Confirma los días y las categorías de <strong>todo el año</strong> después de cotejar el original. La versión anterior se conserva y puedes volver a editar.</p>
+{% if propuesta.cambios %}<p>Se aplicarán las reglas globales ya definidas para estos significados:</p><ul>{% for r in propuesta.reglas if r.nueva %}<li><strong>{{ r.codigo }} · {{ r.nombre }}</strong> → {{ 'Remunerado' if r.pago is sameas true else 'No remunerado' if r.pago is sameas false else 'Remuneración por definir' }} · {{ r.actividad }}{% if r.general %} <span class="small muted">· {{ r.general.nombre }} v{{ r.general.version }}</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
+{% if propuesta.errores %}<ul class="notice">{% for error in propuesta.errores %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+<form method="post" action="{{ url_for('pages.confirmar_calendario',cvid=cv.calendarizacion_version_id) }}" data-async data-calendar-approve data-calendar-confirm>{{ hidden(propuesta.huella) }}<input type="hidden" name="destino" value="{{ destino }}"><input type="hidden" name="mes" value="{{ mes }}">{% if reporte_id %}<input type="hidden" name="reporte_id" value="{{ reporte_id }}">{% endif %}<button class="primary" {% if not propuesta.listo %}disabled{% endif %}>Confirmar todo y dejar vigente</button><p class="form-status" role="status"></p></form>
+{% if mostrar_enlace %}<a href="{{ url_for('pages.calendario',cvid=cv.calendarizacion_version_id,mes=mes) }}#leyenda">Revisar o corregir categorías y días</a>{% endif %}
+</div>{% endif %}
+</div>
+{% endmacro %}

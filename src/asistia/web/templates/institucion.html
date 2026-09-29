@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import badge with context %}
+{% from 'calendario_revision.html' import revision with context %}
+{% block title %}{{ institucion.nombre_ie }} · ASISTIA{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static',filename='reportes.js') }}"></script><script defer src="{{ url_for('static',filename='calendario_anual.js') }}"></script>{% endblock %}
+{% block content %}
+<a href="{{ retorno_directorio }}#directorio-titulo">← Instituciones y personal</a>
+<div class="page-heading"><div><h1>{{ institucion.nombre_ie }}</h1><p>{{ institucion.cod_mod }} · anexo {{ institucion.anexo }} · {{ institucion.nivel_modalidad }}</p><p class="small muted">{{ institucion.distrito }} · Centro poblado: {{ institucion.centro_poblado or 'Sin registrar' }}</p></div><a class="button" data-edit-institution href="{{ url_for('pages.institucion_editar',iid=institucion.institucion_educativa_id,**contexto_directorio) }}">Editar institución</a></div>
+<section class="panel institution-reports" aria-labelledby="reportes-titulo">
+  <div class="panel-heading"><h2 id="reportes-titulo">Reportes mensuales cargados</h2><span class="badge">{{ reportes_ie|length }} reportes</span></div>
+  <p class="muted">Última versión de cada reporte, de todos los meses disponibles.</p>
+  {% if reportes_ie %}<div class="table-wrap inline-scroll" role="region" tabindex="0" aria-label="Reportes mensuales cargados"><table><thead><tr><th scope="col" aria-sort="descending"><button type="button" class="directory-sort" data-report-sort disabled>Mes reportado</button></th><th scope="col">Archivo</th><th scope="col">Carga en el sistema</th><th scope="col">Versión / turno</th><th scope="col">Estado</th></tr></thead><tbody>
+  {% for r in reportes_ie %}<tr data-institution-row data-periodo="{{ r.periodo.isoformat() }}"><td><a data-institution-link href="{{ url_for('pages.reporte',rid=r.reporte_asistencia_id) }}">{{ r.periodo.strftime('%m') }}-{{ nombres_meses[r.periodo.month-1]|upper }}</a><small>{{ r.periodo.year }}</small></td><td>{{ r.nombre_original }}</td><td>{{ r.cargado_en.strftime('%d/%m/%Y') }}</td><td>{{ r.version }} · {{ r.turno or 'Sin turno indicado' }}{% if r.versiones > 1 %}<small>{{ r.versiones }} versiones conservadas</small>{% endif %}</td><td>{{ badge(r.estado) }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="empty">Todavía no hay reportes mensuales cargados para esta institución.</p>{% endif %}
+  {% if revision_cierre %}<details><summary>Revisión técnica de {{ periodo.strftime('%m/%Y') }}</summary><p>Registrada el {{ revision_cierre.revisado_en.strftime('%d/%m/%Y %H:%M') }}. No equivale a aprobación de RRHH.</p>{% for problema in revision_cierre.detalle.problemas %}<p class="notice">{{ problema }}</p>{% endfor %}{% for supuesto in revision_cierre.detalle.supuestos %}<p class="notice">Supuesto: {{ supuesto }}</p>{% endfor %}</details>{% endif %}
+</section>
+<section class="panel" aria-labelledby="personal-titulo"><h2 id="personal-titulo">Personal</h2>
+  <p class="muted">Vínculos y plazas registrados, incluidos los históricos.</p>
+  {% if personas %}<div class="table-wrap inline-scroll" role="region" tabindex="0" aria-label="Personal de la institución"><table><thead><tr><th scope="col">Persona</th><th scope="col">Rol / plaza</th><th scope="col">Tipo</th><th scope="col">Inicio informado</th><th scope="col">Fin informado</th></tr></thead><tbody>{% for p in personas %}<tr><td>{{ p.apellido_paterno or '' }} {{ p.apellido_materno or '' }}, {{ p.nombres or 'Plaza sin persona' }}</td><td>{{ p.rol }}<small>{{ p.codigo_plaza or 'Sin plaza registrada' }}</small></td><td>{{ p.tipo_registro }}</td><td>{{ p.fecha_inicio or 'No se conoce' }}</td><td>{{ p.fecha_fin or 'No se conoce' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="empty">No hay personal registrado para esta institución.</p>{% endif %}
+</section>
+<section class="panel institution-calendar" aria-labelledby="calendario-institucion-titulo">
+  <div class="panel-heading"><div><h2 id="calendario-institucion-titulo">Calendarización {{ 'vigente' if calendario and calendario.estado == 'VIGENTE' else 'actual' }}</h2>{% if calendario %}<p>Año {{ calendario.anio }} · versión {{ calendario.version }} · {{ badge(calendario.estado) }}</p>{% endif %}</div>
+  <div class="actions"><a class="button" href="{{ url_for('pages.subir_calendario',iid=institucion.institucion_educativa_id) }}">Cargar calendario</a>{% if calendario %}<a class="button primary" data-edit-calendar href="{{ url_for('pages.calendario',cvid=edicion_calendario.calendarizacion_version_id,mes=mes_visible) }}#dias">{{ 'Consultar última versión' if edicion_calendario.estado in ['HISTORICA','RECHAZADA'] else 'Editar calendario y leyendas' }}</a>{% endif %}</div></div>
+  {% if calendario %}
+    {% if anios_calendario|length > 1 %}<form method="get" class="inline">{% for k,v in contexto_directorio.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}<label>Año del calendario<select name="anio_calendario">{% for a in anios_calendario %}<option value="{{ a }}" {% if a == anio_calendario %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label><button>Consultar año</button></form>{% endif %}
+    <p class="muted">Vista de consulta. {% if edicion_calendario.estado in ['HISTORICA','RECHAZADA'] %}La última versión está cerrada para edición; puedes consultar sus categorías y su historial.{% else %}Abre «Editar calendario y leyendas» para revisar categorías o guardar cambios en una nueva versión.{% endif %}</p>
+    {% if calendario.estado != 'VIGENTE' %}<p class="notice">Esta versión está pendiente de aprobación; todavía no es un calendario vigente.</p>{% endif %}
+    {% if edicion_calendario.calendarizacion_version_id != calendario.calendarizacion_version_id %}<p class="notice">Hay una versión {{ edicion_calendario.version }} posterior ({{ badge(edicion_calendario.estado) }}). El botón abre esa versión; aquí se muestra la versión {{ calendario.version }}.</p>{% endif %}
+    {% if calendario.procedencia_extraccion.get('tipo') == 'DERIVADO_2025' %}<p class="notice danger">Basado en información de 2025. Esta proyección no acredita el calendario real de {{ calendario.anio }}.</p>{% endif %}
+    {% set enlace_leyenda = url_for('pages.calendario',cvid=calendario.calendarizacion_version_id,mes=mes_visible) ~ '#leyenda' %}
+    {% include 'calendario_anual.html' %}
+    {{ revision(calendario,revision_calendario,'institucion',mes_visible) }}
+  {% else %}<p class="empty">No hay un calendario actual o vigente disponible para esta institución.</p>{% endif %}
+</section>
+{% endblock %}

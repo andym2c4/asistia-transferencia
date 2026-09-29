@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Perfiles experimentales · ASISTIA{% endblock %}
+{% block content %}
+<p class="eyebrow">Exploración mensual</p>
+<h1>Perfiles experimentales</h1>
+<div class="notice"><strong>Datos sintéticos derivados de reportes DRE.</strong> Sirven para probar perfiles y priorizar revisiones. No representan fechas de asistencia ni decisiones de pago.</div>
+<section class="panel">
+  <h2>Crear reportes mensuales</h2>
+  <p>Usa los archivos DRE de marzo a junio de 2026 ya incorporados al cierre. Cada reporte reúne los conteos de una institución y un mes.</p>
+  <form method="post" action="{{ url_for('pages.experimental_importar') }}" data-async data-dirty>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Primer mes de destino <input type="month" name="inicio" value="2026-03" required></label>
+    <p class="muted">Los meses siguientes conservan su distancia. El período de la fuente siempre queda visible.</p>
+    <label>Motivo <input name="motivo" value="Experimento sintético mensual basado en los conteos DRE de 2026" maxlength="4000" required></label>
+    <button>Crear lote sintético</button>
+  </form>
+</section>
+<section class="panel">
+  <h2>Lotes conservados</h2>
+  {% if lotes %}
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Lotes experimentales"><table>
+    <thead><tr><th>Creado</th><th>Meses de destino</th><th>Reportes</th><th>Motivo</th><th>Consultar</th></tr></thead>
+    <tbody>{% for l in lotes %}<tr><td>{{ l.creado_en.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ l.configuracion.mapa_periodos.values()|list|join(', ') }}</td><td>{{ l.reportes }}</td><td>{{ l.motivo }}</td><td><a href="{{ url_for('pages.experimental_lote', lote_id=l.ml_lote_id) }}">Abrir lote</a></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p>Aún no hay lotes. Crea el primero para consultar los meses y ejecutar el experimento.</p>{% endif %}
+</section>
+{% endblock %}

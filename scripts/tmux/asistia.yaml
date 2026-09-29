@@ -1,0 +1,29 @@
+session_name: asistia
+start_directory: /data/projects/asistia
+before_script: /data/projects/asistia/scripts/workspace.sh prepare
+
+# Abrir/reconectar: ws asistia
+# Desconectar sin apagar: prefijo de tmux, d.
+# Cerrar workspace (en modo local también detiene servicios): ./scripts/workspace.sh stop
+options:
+  default-shell: /bin/bash
+  history-limit: 20000
+windows:
+  - window_name: servicios
+    focus: true
+    layout: main-vertical
+    options:
+      main-pane-width: '50%'
+      pane-border-status: top
+      pane-border-format: ' #{pane_index}: #{pane_title} '
+    panes:
+      - shell_command:
+          - tmux select-pane -t "$TMUX_PANE" -T 'ASISTIA · web'
+          - ./scripts/workspace.sh web
+        focus: true
+      - shell_command:
+          - tmux select-pane -t "$TMUX_PANE" -T 'PostgreSQL · acceso'
+          - ./scripts/workspace.sh logs
+      - shell_command:
+          - tmux select-pane -t "$TMUX_PANE" -T 'Consola · ASISTIA'
+          - ./scripts/workspace.sh console

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import hidden with context %}
+{% block title %}Monitoreo de leyendas · ASISTIA{% endblock %}
+{% block content %}
+<header class="page-heading"><div><p class="eyebrow">Calidad del documento</p><h1>Monitoreo de leyendas</h1><p>Revisa posibles errores de alineación antes de interpretar la asistencia. Las categorías conocidas ayudan a reconocer descripciones; cada documento conserva sus propios códigos.</p></div></header>
+<section class="panel"><h2>Comprobar documentos anteriores</h2><p>Las nuevas cargas Excel se comprueban automáticamente. Para los reportes ya cargados, esta acción coteja sus originales y deja pendientes los códigos con posible desfase, conservando las correcciones locales y el historial.</p><form method="post" action="{{ url_for('pages.monitoreo_leyendas_comprobar') }}" data-async>{{ hidden() }}<button>Comprobar leyendas Excel existentes</button></form><p class="small">Control de desplazamientos de una fila en tablas de códigos y descripciones. Otros diseños, PDF e imágenes requieren cotejo. La ausencia de una observación no certifica una leyenda correcta.</p></section>
+<section class="panel"><h2>Reportes con interpretación pendiente: {{ reportes|length }} de {{ total }}</h2>
+<form method="get" class="filters"><label>Mes<input type="month" name="mes" value="{{ mes }}"></label><label>Nivel<select name="nivel_filtro"><option value="">Todos los niveles</option>{% for k,n in niveles.items() %}<option value="{{ k }}" {% if nivel_filtro==k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label><button>Filtrar</button><a href="{{ url_for('pages.monitoreo_leyendas') }}">Quitar filtros</a></form>
+{% for r in reportes %}<article class="panel" data-reporte="{{ r.id }}"><h3>{{ r.nombre_ie }}</h3><p>{{ r.cod_mod }} · anexo {{ r.anexo }} · {{ r.nivel }} · {{ r.periodo[:7] }}</p>
+{% for h in r.hallazgos %}<p class="notice"><strong>Posible desfase de leyenda.</strong> La interpretación de los códigos {{ h.codigos_pendientes|join(', ') }} permanece pendiente.</p><p>Hoja {{ h.hoja }} · celdas {{ h.rango }}. Se reconocieron {{ h.descripciones_reconocidas }} de {{ h.total_descripciones }} descripciones, pero sus posiciones no coinciden con los códigos.</p>{% endfor %}
+<a href="{{ url_for('pages.reporte',rid=r.id) }}#leyenda">Revisar leyenda y abrir original</a></article>
+{% else %}<p>No hay reportes con posibles desfases registrados para estos filtros. Puedes quitar los filtros o comprobar los Excel anteriores.</p>{% endfor %}</section>
+<p>Estas observaciones corresponden al documento. <a href="{{ url_for('pages.monitoreo_diario') }}">Los cortes de asistencia y calendario</a> conservan la interpretación con la que se generaron; después de revisar las leyendas, crea otro corte para actualizar el análisis.</p>
+{% endblock %}

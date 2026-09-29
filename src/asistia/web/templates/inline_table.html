@@ -1,0 +1,18 @@
+{% macro inline_table(id, columnas, titulo) -%}
+<div id="{{ id }}" data-inline-table>
+  <div class="inline-table-toolbar" hidden><label for="{{ id }}-buscar">Buscar en esta tabla<input id="{{ id }}-buscar" type="search" data-inline-search placeholder="Buscar en todas las filas" autocomplete="off"></label><span class="small muted" data-inline-status role="status" aria-live="polite"></span></div>
+  <div class="column-filter-summary" data-filter-summary></div>
+  <div class="table-wrap inline-table-scroll" role="region" aria-label="{{ titulo }}" tabindex="0">
+    <table class="inline-table"><thead><tr>{% for columna in columnas %}<th scope="col" aria-sort="none"><div class="column-controls"><button class="directory-sort" type="button" data-sort="{{ loop.index0 }}" disabled>{{ columna }}</button><button class="column-filter" type="button" data-filter="{{ loop.index0 }}" aria-label="Filtrar por {{ columna }}" aria-haspopup="dialog" aria-expanded="false" aria-controls="{{ id }}-filtro" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></svg><span class="filter-indicator" aria-hidden="true"></span></button></div></th>{% endfor %}</tr></thead><tbody>{{ caller() }}</tbody></table>
+  </div>
+  <div class="empty" data-no-matches hidden><p>No hay filas que coincidan con los filtros.</p><button type="button" data-clear-all>Limpiar filtros</button></div>
+  <div id="{{ id }}-filtro" class="column-popover" data-column-popover role="dialog" aria-labelledby="{{ id }}-filtro-titulo" hidden>
+    <div class="column-popover-heading"><strong id="{{ id }}-filtro-titulo"></strong><button type="button" data-close-filter aria-label="Cerrar filtro">×</button></div>
+    <label class="small" for="{{ id }}-valor">Buscar valor<input id="{{ id }}-valor" type="search" autocomplete="off" placeholder="Buscar en los valores"></label>
+    <div class="facet-list-heading"><label><input type="checkbox" data-all-values>Todos los valores</label><span>Filas</span></div>
+    <div class="facet-values" data-facet-values></div>
+    <p class="small muted">Filas que coinciden con los demás filtros.</p>
+    <button type="button" class="link-button" data-clear-column>Quitar filtro de esta columna</button>
+  </div>
+</div>
+{%- endmacro %}

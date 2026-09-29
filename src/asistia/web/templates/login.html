@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Ingresar · ASISTIA{% endblock %}
+{% block content %}
+<section class="login-card" aria-label="Ingresar a AsistIA">
+  <div class="brand brand-ugel">
+    <img class="brand-logo" src="{{ url_for('static',filename='ugel-luya.png') }}" alt="" width="137" height="62">
+    <div class="brand-copy"><h1>AsistIA</h1><span class="brand-caption">UGEL LUYA | BREIT</span></div>
+  </div>
+  {% if error %}<div class="notice danger" role="alert" data-error>{{ error }}</div>{% endif %}
+  <form method="post" class="fields">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ request.args.get('next','/') }}">
+    <label for="email">Usuario</label><input type="text" id="email" name="email" autocomplete="username" autocapitalize="none" spellcheck="false" required value="{{ request.form.get('email','') }}">
+    <label for="password">Contraseña</label><input type="password" id="password" name="password" autocomplete="current-password" required>
+    <button class="primary">Ingresar</button>
+  </form>
+</section>
+{% endblock %}

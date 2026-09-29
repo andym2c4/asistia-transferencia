@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar institución' if institucion else 'Nueva institución' }} · ASISTIA{% endblock %}
+{% block content %}
+<a href="{{ volver }}">← {{ 'Volver a la institución' if institucion else 'Volver al directorio' }}</a>
+<div class="page-heading"><div><span class="eyebrow">Instituciones y personal</span><h1>{{ 'Editar institución' if institucion else 'Nueva institución' }}</h1><p>{{ institucion.nombre_ie if institucion else 'Registra los datos que identifican al servicio educativo.' }}</p></div></div>
+<section class="panel institution-form">
+  <p class="muted">Los campos con * son obligatorios. Código modular y anexo identifican a una institución.</p>
+  {% if institucion %}<p class="notice">Si corriges el código o el nivel, comprueba la fuente: los reportes, el personal y los calendarios seguirán vinculados a esta misma institución.</p>{% endif %}
+  <form method="post" data-async data-dirty>
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="operacion" value="{{ op }}"><input type="hidden" name="huella" value="{{ huella }}">
+    <div class="form-grid">{% for campo,(etiqueta,limite,obligatorio) in campos.items() %}
+      <label for="{{ campo }}">{{ etiqueta }}{{ ' *' if obligatorio else ' (opcional)' }}
+        <input id="{{ campo }}" name="{{ campo }}" value="{{ datos.get(campo) or '' }}" maxlength="{{ limite }}" {% if obligatorio %}required{% endif %} {% if campo == 'cod_mod' %}inputmode="numeric" pattern="[0-9]{7}" aria-describedby="ayuda-codigo"{% elif campo == 'anexo' %}inputmode="numeric" pattern="[0-9]{1,4}"{% elif campo == 'nivel_modalidad' %}list="niveles-institucion"{% endif %}>
+        {% if campo == 'cod_mod' %}<small id="ayuda-codigo" class="muted">7 dígitos; conserva los ceros iniciales.</small>{% endif %}
+      </label>
+    {% endfor %}</div>
+    <datalist id="niveles-institucion">{% for n in opciones_nivel %}<option value="{{ n }}">{% endfor %}</datalist>
+    <label for="motivo">Motivo y fuente *<textarea id="motivo" name="motivo" required maxlength="4000" rows="3" placeholder="Indica de dónde provienen los datos o qué estás corrigiendo.">{{ datos.get('motivo','') }}</textarea></label>
+    <p class="form-status" role="{{ 'alert' if error else 'status' }}" {% if error %}data-error{% endif %}>{{ error or '' }}</p>
+    <div class="actions"><button class="primary" type="submit">{{ 'Guardar cambios' if institucion else 'Crear institución' }}</button><a href="{{ volver }}">Cancelar</a>{% if institucion %}<a href="{{ url_for('pages.institucion_editar',iid=institucion.institucion_educativa_id) }}" target="_blank" rel="noopener">Abrir versión actual ↗</a>{% endif %}</div>
+  </form>
+</section>
+{% if institucion %}<section class="panel" aria-labelledby="historial-institucion"><h2 id="historial-institucion">Historial de cambios</h2>
+{% for c in cambios %}<details class="history-item"><summary>{{ c.creado_en.strftime('%d/%m/%Y %H:%M') }} · {{ {'CREAR':'Creación','EDITAR':'Edición','COMPLETAR_PADRON':'Centro poblado desde padrón'}[c.accion] }} · {{ c.responsable }}</summary><p>{{ c.motivo }}</p>
+<div class="table-wrap"><table><thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead><tbody>{% for d in c.detalle %}<tr><td>{{ d.campo }}</td><td>{{ d.antes or 'Sin registrar' }}</td><td>{{ d.despues or 'Sin registrar' }}</td></tr>{% endfor %}</tbody></table></div>
+{% if c.fuente %}<p class="small muted">Fuente: {{ c.fuente.nombre }} · fila {{ c.fuente.fila }} · columna {{ c.fuente.columna }}</p>{% endif %}</details>{% else %}<p class="muted">Todavía no hay cambios registrados desde la habilitación de este historial.</p>{% endfor %}</section>{% endif %}
+{% endblock %}

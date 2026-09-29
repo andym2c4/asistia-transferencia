@@ -1,0 +1,36 @@
+{% if not historico %}
+<details class="coherence-adjustment" data-coherence-adjustment open>
+<summary>Revisión por día · resultado para consolidar</summary>
+<p>Selecciona la persona y el día para comparar el calendario, lo reportado y el valor que usaría un nuevo consolidado.</p>
+<div class="coherence-workspace" data-coherence-workspace>
+{% include 'reporte_calendario.html' %}
+{% if reporte.estado == 'VALIDADO' %}
+<form method="post" action="{{ url_for('pages.ajustar_asistencia',rid=reporte.reporte_asistencia_id) }}" data-preview-url="{{ url_for('pages.comparar_asistencia_dia',rid=reporte.reporte_asistencia_id) }}" data-async data-urlencoded data-dirty data-report-form data-attendance-adjust-form>
+{{ hidden(huella) }}<input type="hidden" name="huella_cruce" value="{{ coherencia.huella }}"><input type="hidden" name="huella_opciones" value="{{ ajustes_asistencia.huella }}"><input type="hidden" name="volver_dia" value="1">
+<label data-comparison-enhancement hidden>Persona<select data-adjust-person aria-label="Persona para comparar">{% for p in personas %}<option value="{{ p.trabajador_en_reporte_id }}">{{ p.nombres_reportados_raw }}</option>{% endfor %}</select></label>
+<label data-comparison-fallback>Persona y día<select name="dia" required data-adjust-day><option value="">Selecciona el día que comprobaste</option>{% for p in personas %}<optgroup label="{{ p.nombres_reportados_raw }}">{% for d in p.celdas if d %}<option value="{{ d.asistencia_dia_id }}" data-person="{{ p.trabajador_en_reporte_id }}" data-date="{{ d.fecha }}">{{ d.fecha.strftime('%d/%m/%Y') }} · {{ p.nombres_reportados_raw }} · Declarado: {{ d.etiqueta }} ({{ d.clasificacion.get('tipo_dia') or d.captura_texto }})</option>{% endfor %}</optgroup>{% endfor %}</select></label>
+<div data-comparison-enhancement hidden>
+<p class="small comparison-month-help">Cada día muestra el valor para consolidar. La selección se comparte con Datos digitalizados y Calendarización del mes reportado.</p>
+<div class="comparison-days" data-comparison-days role="group" aria-label="Seleccionar día del reporte"></div>
+<p class="small">✓ Sin diferencias · ! Por revisar · ? Información pendiente · • Con ajuste de RRHH</p>
+<div class="comparison-heading"><h3 data-comparison-title>Día seleccionado</h3><span class="badge" data-comparison-state>Consultando</span></div>
+<div class="comparison-grid" data-comparison-grid aria-busy="true">
+<article><h4>Calendarizado</h4><strong data-comparison-calendar-code>—</strong><p data-comparison-calendar-name>Selecciona un día</p><p class="small" data-comparison-calendar-detail></p><small data-comparison-calendar-version></small></article>
+<article><h4>Reportado · digitalizado</h4><strong data-comparison-declared-code>—</strong><p data-comparison-declared-name>Lectura del documento</p><p class="small" data-comparison-declared-detail></p><small>Se conserva como fue declarado.</small></article>
+<article class="comparison-final"><h4>Para consolidar</h4><strong data-comparison-final-code>—</strong><p data-comparison-final-name>Valor guardado</p><p class="small" data-comparison-final-detail></p><small data-comparison-saved></small></article>
+</div>
+<div class="comparison-result notice" data-comparison-result role="status"><strong data-comparison-result-title>Consultando el cruce del día…</strong><ul data-comparison-reasons></ul></div>
+<button type="button" data-comparison-retry hidden>Reintentar comparación</button><a href="" data-comparison-reload hidden>Recargar valores actuales</a>
+</div>
+<label class="comparison-value">Corregir el día seleccionado<select name="valor" required data-adjust-value><option value="">Mantener el valor guardado · sin cambios</option>{% for o in ajustes_asistencia.opciones %}<option value="{{ o.id }}" data-detail="{{ o.detalle }}">{{ o.etiqueta }}{% if o.origen %} · {{ o.origen }}{% endif %}</option>{% endfor %}</select></label>
+<p class="small" data-adjust-context>La comparación se actualiza antes de guardar. No correspondía asistir no cuenta como falta.</p>
+<details><summary>Añadir comentario o referencia (opcional)</summary><textarea name="motivo" maxlength="4000" rows="2" aria-label="Comentario sobre el ajuste"></textarea></details>
+<div class="actions"><button class="primary" data-adjust-save>Guardar corrección del día</button><button type="button" data-adjust-cancel>Cancelar cambio</button></div><p class="form-status" role="status"></p>
+<p class="small muted">El resultado corresponde al día seleccionado. Los demás días y controles se comprueban al preparar el consolidado.</p>
+</form>
+{% else %}<p class="notice">Confirma primero la digitalización del reporte para registrar un ajuste de RRHH.</p>{% endif %}
+</div>
+</details>
+{% else %}
+{% include 'reporte_calendario.html' %}
+{% endif %}

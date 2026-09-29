@@ -1,0 +1,43 @@
+{% extends 'base.html' %}{% from 'macros.html' import empty with context %}
+{% block scripts %}<script defer src="{{ url_for('static',filename='revision_bandeja.js') }}"></script><script defer src="{{ url_for('static',filename='revision_cargas.js') }}"></script>{% endblock %}
+{% block content %}
+<div class="page-heading"><div><span class="eyebrow">{{ niveles[nivel] }} · {{ periodo.strftime('%m/%Y') }}</span><h1>Revisión</h1><p>Encuentra cada institución, carga su reporte mensual y continúa la revisión.</p></div></div>
+{% include 'revision_cargas.html' %}
+<section class="panel" id="revision-directory">
+  <div class="panel-heading"><h2>Instituciones del mes</h2><span class="count-badge" data-revision-count>{{ instituciones|length }} instituciones</span></div>
+  <div class="level-filters revision-status-filters" aria-label="Filtrar por estado de digitalización" hidden>
+    {% for estado,etiqueta in [('', 'Todas'),('Sin reporte cargado','Sin reporte'),('Por revisar','Por revisar'),('Digitalización revisada','Digitalización revisada')] %}<button type="button" data-state="{{ estado }}" aria-pressed="{{ 'true' if not estado else 'false' }}">{{ etiqueta }} <span data-state-count></span></button>{% endfor %}
+  </div>
+  <label class="revision-search" hidden>Buscar institución<input type="search" data-revision-search placeholder="Nombre, código modular, distrito o centro poblado" autocomplete="off"></label>
+  <div class="column-filter-summary" data-filter-summary></div>
+  <p class="small muted" data-revision-status role="status" aria-live="polite">{{ instituciones|length }} instituciones · {{ periodo.strftime('%m/%Y') }}</p>
+  {% if instituciones %}
+  <p class="ayuda-tabla small">Desliza la tabla para consultar todas las columnas.</p>
+  <div class="table-wrap revision-scroll" role="region" aria-label="Instituciones para revisión y carga de reportes" tabindex="0">
+    <table class="revision-table">
+      <thead><tr>{% for titulo in ['Institución','Distrito','Digitalización','Registros de personal','Observaciones'] %}<th scope="col" aria-sort="none"><div class="column-controls"><button class="directory-sort" type="button" data-sort="{{ loop.index0 }}" disabled>{{ titulo }}</button><button class="column-filter" type="button" data-filter="{{ loop.index0 }}" aria-label="Filtrar por {{ titulo }}" aria-haspopup="dialog" aria-expanded="false" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></svg><span class="filter-indicator" aria-hidden="true"></span></button></div></th>{% endfor %}<th scope="col">Acción</th></tr></thead>
+      <tbody>{% for i in instituciones %}
+        <tr data-revision-row data-state="{{ i.estado }}" data-search="{{ i.nombre_ie }} {{ i.cod_mod }} {{ i.anexo }} {{ i.distrito }} {{ i.centro_poblado or '' }}">
+          <td data-value="{{ i.nombre_ie }}"><a href="{{ url_for('pages.institucion',iid=i.institucion_educativa_id) }}">{{ i.nombre_ie }}</a><small>{{ i.cod_mod }} · anexo {{ i.anexo }}{% if i.centro_poblado %} · {{ i.centro_poblado }}{% endif %}</small></td>
+          <td data-value="{{ i.distrito or 'Sin registrar' }}">{{ i.distrito or 'Sin registrar' }}</td>
+          <td data-value="{{ i.estado }}"><span class="badge {{ 'good' if i.estado == 'Digitalización revisada' else 'warn' if i.reportes else '' }}">{{ i.estado }}</span>{% if i.reportes|length > 1 %}<small>{{ i.reportes|length }} reportes vigentes</small>{% endif %}</td>
+          <td data-value="{{ i.filas if i.reportes else 'Sin reporte' }}" data-sort-value="{{ i.filas if i.reportes else -1 }}">{% if i.reportes %}{{ i.filas }} registros{% if i.sin_identidad %}<small>{{ i.sin_identidad }} sin identidad o rol</small>{% endif %}{% else %}—{% endif %}</td>
+          <td data-value="{{ i.pendientes if i.reportes else 'Sin reporte' }}" data-sort-value="{{ i.pendientes if i.reportes else -1 }}">{% if i.reportes %}{{ i.pendientes }} pendientes{% if i.criticos %}<small>{{ i.criticos }} críticas</small>{% endif %}{% else %}—{% endif %}</td>
+          <td class="revision-action">{% if not i.reportes %}<a class="button" data-upload-report href="{{ url_for('pages.subir_reporte',institucion_id=i.institucion_educativa_id,periodo=periodo.strftime('%Y-%m'),nivel=nivel) }}">Subir reporte mensual</a>{% elif i.reportes|length == 1 %}<a class="button" href="{{ url_for('pages.reporte',rid=i.reportes[0].reporte_asistencia_id) }}">Abrir revisión</a>{% else %}<details><summary>Ver {{ i.reportes|length }} reportes</summary>{% for r in i.reportes %}<a class="button" href="{{ url_for('pages.reporte',rid=r.reporte_asistencia_id) }}">{{ r.turno }} · v{{ r.version }} · {{ 'Revisado' if r.estado == 'VALIDADO' else 'Por revisar' }}</a>{% endfor %}</details>{% endif %}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="empty" data-no-matches hidden><h3>No hay coincidencias</h3><p>Prueba con otro nombre o quita los filtros.</p><button type="button" data-clear-all>Limpiar filtros</button></div>
+  {% else %}{{ empty('No hay instituciones registradas para este nivel','Cambia el nivel de trabajo o incorpora las instituciones al padrón.') }}{% endif %}
+  <p class="small muted revision-scope-note">Incluye instituciones registradas y reportes del mes. «Sin reporte»: aún no hay un reporte identificado para este mes y nivel. Los registros de personal son filas de los reportes.</p>
+  <div class="column-popover" data-column-popover role="dialog" aria-labelledby="revision-filter-title" hidden>
+    <div class="column-popover-heading"><strong id="revision-filter-title"></strong><button type="button" data-close-filter aria-label="Cerrar filtro">×</button></div>
+    <label class="small" for="revision-value-search">Buscar valor<input id="revision-value-search" type="search" autocomplete="off" placeholder="Buscar en los valores"></label>
+    <div class="facet-list-heading"><label><input type="checkbox" data-all-values>Todos los valores</label><span>Cantidad</span></div>
+    <div class="facet-values" data-facet-values></div>
+    <p class="small muted">Cantidad de instituciones según los demás filtros.</p>
+    <button type="button" class="link-button" data-clear-column>Quitar filtro de esta columna</button>
+  </div>
+</section>
+{% endblock %}

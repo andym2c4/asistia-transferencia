@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}ASISTIA · UGEL Luya{% endblock %}</title>
+  <script src="{{ url_for('static', filename='tema.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</head>
+<body>
+<a class="skip" href="#contenido">Ir al contenido</a>
+{% if usuario %}
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand brand-ugel" href="{{ url_for('pages.mes') }}" aria-label="AsistIA · UGEL LUYA | BREIT · Inicio">
+      <img class="brand-logo" src="{{ url_for('static',filename='ugel-luya.png') }}" alt="" width="137" height="62">
+      <span class="brand-copy"><strong>AsistIA</strong><span class="brand-caption">UGEL LUYA | BREIT</span></span>
+    </a>
+    <nav aria-label="Navegación principal" class="primary-nav">
+      <a href="{{ url_for('pages.mes') }}" {% if request.endpoint == 'pages.mes' %}aria-current="page"{% endif %}>Inicio</a>
+      <a href="{{ url_for('pages.revision') }}" {% if request.endpoint in ['pages.revision','pages.reporte','pages.persona','pages.subir_reporte','pages.documento','pages.documento_cierre'] %}aria-current="page"{% endif %}>Revisión</a>
+      <a href="{{ url_for('pages.consolidado') }}" {% if request.endpoint in ['pages.consolidado','pages.salida'] %}aria-current="page"{% endif %}>Consolidado</a>
+      <span class="primary-nav-separator" aria-hidden="true"></span>
+      <a href="{{ url_for('pages.instituciones') }}" {% if request.endpoint in ['pages.instituciones','pages.institucion','pages.institucion_editar','pages.subir_calendario','pages.calendario'] %}aria-current="page"{% endif %}>Instituciones y personal</a>
+      <a href="{{ url_for('pages.categorias') }}" {% if request.endpoint and request.endpoint.startswith('pages.categoria') %}aria-current="page"{% endif %}>Reglas de código</a>
+    </nav>
+    {% include 'selector_tema.html' %}
+    {% if herramientas_desarrollo %}<div class="secondary-nav"><span class="eyebrow">Más herramientas</span>
+    <nav aria-label="Desarrollo local">
+      <a href="{{ url_for('pages.desarrollo') }}" {% if en_herramientas_desarrollo %}aria-current="page"{% endif %}>Herramientas de desarrollo</a>
+    </nav></div>{% endif %}
+    <div class="operator"><span class="muted">Sesión de</span><strong>{{ usuario.nombre }}</strong>
+      <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link-button">Cerrar sesión</button></form>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <span class="eyebrow">Consolidación mensual</span>
+      {% if periodo is defined and mostrar_ambito|default(true) %}
+      <form method="get" action="{{ url_for(destino_ambito|default('pages.mes')) }}" class="scope" aria-label="Cambiar ámbito de trabajo">
+        <label>Mes <input type="month" name="periodo" value="{{ periodo.strftime('%Y-%m') }}" required></label>
+        <label>Nivel <select name="nivel">{% for codigo,nombre in niveles.items() %}<option value="{{ codigo }}" {% if codigo == nivel %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select></label>
+        <button>Ver mes</button>
+      </form>
+      {% endif %}
+    </header>
+{% else %}<header class="public-topbar">{% include 'selector_tema.html' %}</header>{% endif %}
+<main id="contenido" class="{% if usuario %}content{% else %}public-content{% endif %}" tabindex="-1">
+  {% if datos_ficticios %}<p class="notice">Comprobación con datos ficticios. Esta instancia no contiene datos operativos de RRHH.</p>{% endif %}
+  {% if herramientas_desarrollo and en_herramientas_desarrollo and request.endpoint != 'pages.desarrollo' %}<p class="small"><a href="{{ url_for('pages.desarrollo') }}">← Herramientas de desarrollo</a></p>{% endif %}
+  {% for categoria,mensaje in get_flashed_messages(with_categories=true) %}<div class="notice {% if categoria == 'error' %}danger{% endif %}" role="status">{{ mensaje }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+{% if usuario %}<footer>ASISTIA · La revisión es local. El oficio, firma y trámite ante la DRE se realizan fuera del sistema.</footer></div></div>{% endif %}
+</body>
+</html>

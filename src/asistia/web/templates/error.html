@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel"><span class="eyebrow">La operación necesita atención</span><h1>No se pudo completar</h1>
+<p role="alert" data-error>{{ mensaje }}</p>
+<div class="actions"><button type="button" data-back>Volver al formulario</button><a class="button" href="{{ url_for('pages.mes') }}">Ver mes de trabajo</a></div>
+<p class="muted">Los resultados ya confirmados se conservan. Consulta el estado del registro antes de repetir una operación.</p></section>
+{% endblock %}

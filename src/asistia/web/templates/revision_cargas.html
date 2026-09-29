@@ -1,0 +1,17 @@
+{% from 'macros.html' import hidden,badge with context %}
+<section class="panel report-upload" id="carga-reportes" aria-labelledby="carga-reportes-titulo">
+  <h2 id="carga-reportes-titulo">Cargar reportes mensuales</h2>
+  <p class="muted" id="reportes-niveles-ayuda">Carga reportes de Inicial, Primaria y Secundaria juntos. El nivel seleccionado solo filtra la lista de instituciones; cada archivo se identifica según su institución, turno, nivel y mes.</p>
+  <form action="{{ url_for('pages.cargar_revision') }}" method="post" enctype="multipart/form-data" data-report-upload>
+    {{ hidden() }}<input type="hidden" name="tipo" value="asistencia">
+    <label for="reportes-archivos">Archivos de asistencia<input id="reportes-archivos" type="file" name="archivos" multiple required aria-describedby="reportes-niveles-ayuda reportes-archivos-ayuda"></label>
+    <p class="small muted" id="reportes-archivos-ayuda">Excel, PDF, imagen o Word · hasta 20 MB por archivo. <span data-queue-help>Hasta 10 archivos y 32 MB por envío.</span></p>
+    <details class="upload-reception"><summary>Indicar recepción real, si se conoce</summary><label>Fecha y hora de recepción<input type="datetime-local" name="recibido_real_en"><small>Hora de Perú. Se aplicará a esta cola; dejar vacío significa que no se conoce.</small></label></details>
+    <div data-upload-queue class="upload-queue" role="region" aria-label="Cola de reportes mensuales" tabindex="0" hidden><ol data-upload-list></ol></div>
+    <div class="actions"><button type="submit" class="primary" data-upload-start>Cargar y procesar</button><button type="button" data-upload-pause hidden>Pausar después de este archivo</button><span data-upload-counter class="small muted"></span></div>
+    <p class="form-status" data-upload-status role="status" aria-live="polite"></p>
+    <a href="{{ url_for('auth.login') }}" target="_blank" rel="noopener" data-upload-login hidden>Iniciar sesión en otra pestaña ↗</a>
+    <button type="button" class="link-button" data-upload-refresh hidden>Actualizar instituciones y últimas cargas</button>
+  </form>
+  <div data-upload-recent>{% include 'revision_cargas_recientes.html' %}</div>
+</section>

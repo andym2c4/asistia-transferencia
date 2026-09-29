@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Conteos del perfil mensual · ASISTIA{% endblock %}
+{% block content %}
+{% if volver_monitor %}<a href="{{ volver_monitor }}">← Volver a Monitoreo con los mismos filtros</a>{% else %}<a href="{{ url_for('pages.experimental_lote', lote_id=reporte.ml_lote_id, mes=reporte.periodo.strftime('%Y-%m')) }}">← Volver al mes</a>{% endif %}
+<h1>{{ reporte.nombre_ie }}</h1>
+<p>{{ reporte.cod_mod }} / {{ reporte.anexo }} · Mes de destino: {{ reporte.periodo.strftime('%Y-%m') }} · Fuente: {{ reporte.periodo_fuente.strftime('%Y-%m') }}</p>
+<div class="notice"><strong>Reporte sintético derivado.</strong> {{ reporte.datos.registros_laborales }} registros laborales, no necesariamente personas distintas. No contiene fechas de faltas ni regla de remuneración.</div>
+{% if experimento_monitor %}<p class="muted">Corte consultado: experimento {{ experimento_monitor.ml_experimento_id|string|truncate(13, True, '') }} · {{ experimento_monitor.creado_en.strftime('%d/%m/%Y %H:%M %Z') }}. Abrir esta fuente no registra una revisión de RRHH.</p>{% endif %}
+<section class="panel"><h2>Conteos y supuestos</h2>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Componentes del reporte"><table><thead><tr><th>Conteo</th><th>Suma observada válida</th><th>Suma usada en experimento</th><th>Registros conocidos</th><th>Desconocidos</th><th>Guiones usados como cero</th></tr></thead><tbody>
+{% for campo in campos %}{% set c = reporte.datos.componentes[campo] %}<tr><th>{{ campo|replace('_',' ')|capitalize }}</th><td>{{ c.suma_observada_valida if c.suma_observada_valida is not none else 'Sin dato numérico' }}</td><td>{{ c.suma_utilizada if c.suma_utilizada is not none else 'Desconocida' }}</td><td>{{ c.registros_conocidos }}</td><td>{{ c.registros_desconocidos }}</td><td>{{ c.estados.get('SUPUESTO_GUION_CERO',0) }}</td></tr>{% endfor %}
+</tbody></table></div><p>La suma observada solo incluye números válidos. La suma utilizada añade el supuesto del guion; una suma parcial no representa el total completo de la institución.</p></section>
+<section class="panel"><h2>Perfil para revisión</h2>{% if score %}<p>Puesto {{ score.puesto }} del mes · Puntuación {{ '%.4f'|format(score.score_if) }} · {{ score.particion|capitalize }}</p><p>Estos indicadores comparan el perfil con la mediana de entrenamiento. No explican causalmente el modelo.</p><ul>{% for i in score.indicadores_a_revisar %}<li>{{ i.variable|replace('_',' ')|capitalize }}: {{ '%.3f'|format(i.valor) }}; mediana de referencia {{ '%.3f'|format(i.mediana_entrenamiento) }}.</li>{% endfor %}</ul>{% elif not reporte.datos.apto_modelo %}<p>Sin puntuación: no hay conteos de días utilizables. Consulta los originales; los vacíos siguen pendientes.</p>{% else %}<p>Ejecuta el experimento desde el lote para obtener este perfil.</p>{% endif %}</section>
+<section class="panel"><h2>Procedencia por registro</h2><p>Abre la fuente y usa la hoja, fila y celda para cotejar los valores.</p>
+{% for f in reporte.fuentes %}<details><summary>Hoja {{ f.hoja }} · fila {{ f.fila }}</summary><p><a href="{{ url_for('pages.documento_cierre', did=f.cierre_documento_id) }}">Abrir documento de origen</a></p><dl>{% for campo,c in f.conteos.items() %}<dt>{{ campo|replace('_',' ')|capitalize }} · {{ c.celda }}</dt><dd>Recibido: {{ c.recibido if c.recibido is not none else 'Vacío' }} · Utilizado: {{ c.usado if c.usado is not none else 'Desconocido' }} · {{ c.estado|replace('_',' ')|capitalize }}</dd>{% endfor %}</dl></details>{% endfor %}
+</section>
+{% endblock %}

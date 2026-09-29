@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import badge,hidden,sustento with context %}
+{% from 'leyenda.html' import pago with context %}
+{% from 'calendario_revision.html' import revision as confirmar_anual, original with context %}
+{% block scripts %}<script defer src="{{ url_for('static',filename='calendario.js') }}"></script>{% endblock %}
+{% block content %}
+<a href="{{ url_for('pages.institucion',iid=calendario.institucion_educativa_id,anio_calendario=calendario.anio) }}#dias">← Institución</a>{% if herramientas_desarrollo %} · <a href="{{ url_for('pages.calendarios') }}">Calendarios</a>{% endif %}
+<div class="page-heading"><div><span class="eyebrow">Año {{ calendario.anio }} · versión {{ calendario.version }}</span><h1>{{ calendario.nombre_ie }}</h1><p>{{ badge(calendario.estado) }} · {{ calendario.motivo_version }}</p></div>{% if calendario.documento_recibido_id %}<a class="button" href="{{ url_for('pages.original_calendario',cvid=calendario.calendarizacion_version_id) }}" target="_blank" rel="noopener">Abrir original ↗</a>{% endif %}</div>
+{% if not es_ultima %}<div class="notice">Estás consultando una versión anterior. <a href="{{ url_for('pages.calendario',cvid=ultima_version.calendarizacion_version_id,mes=mes_visible) }}">Abrir versión {{ ultima_version.version }} para asignar días</a>.</div>{% endif %}
+{% if calendario.procedencia_extraccion.get('tipo') == 'DERIVADO_2025' %}<div class="notice danger"><strong>Basado en información de 2025.</strong> Esta proyección no acredita el calendario real de {{ calendario.anio }}. Las asignaciones conservan esta condición; carga la fuente del año para poder aprobar.</div>{% elif calendario.procedencia_extraccion.get('metodo') == 'GEMINI' %}<div class="notice">Calendario extraído con lectura automática. Comprueba los días con el original antes de aprobar.</div>{% endif %}
+{% if sin_determinar %}<p class="notice">{{ sin_determinar }} de {{ dias|length }} días recibidos sin actividad determinada.{% if bloqueantes %} {{ bloqueantes }} fuera de enero/febrero bloquean la aprobación.{% else %} Los pendientes recibidos de enero/febrero no bloquean la aprobación.{% endif %} Las fechas sin registro también aparecen en el calendario y no se completan automáticamente.</p>{% endif %}
+
+<section class="panel" data-calendar-section="original"><h2>Documento original</h2>{{ original(calendario) }}</section>
+<section class="panel calendar-annual-editor" id="dias" data-calendar-section="digitalizado">
+{% include 'calendario_cuadricula.html' %}
+{% include 'calendario_simbolos.html' %}
+{{ confirmar_anual(calendario,revision_calendario,'calendario',mes_visible,mostrar_original=false,mostrar_enlace=false) }}
+<details class="calendar-history"><summary>Consultar historial y datos recibidos</summary>
+{% set revision = calendario.procedencia_extraccion.get('revision_dias') %}
+{% if revision %}<div><h3>Última asignación de días</h3><p>{{ revision.motivo }} · {{ revision.cambios|length }} días. Autor registrado: {{ revision.autor }}.</p><a href="{{ url_for('pages.calendario',cvid=revision.padre,mes=mes_visible) }}">Consultar versión anterior a esta asignación</a><details><summary>Ver fechas y cambios</summary><ul>{% for fecha,cambio in revision.cambios.items() %}<li>{{ fecha }}: {{ cambio.clasificacion.tipo_dia }}{% if cambio.clasificacion.grupo_actividad %} · {{ cambio.codigo }}{% endif %}. Valor recibido: {{ cambio.anterior.codigo_reportado_raw if cambio.anterior and cambio.anterior.codigo_reportado_raw is not none else 'Vacío' if cambio.anterior else 'Sin registro' }}.</li>{% endfor %}</ul></details></div>{% endif %}
+<details class="panel" id="detalle-dias"><summary>Consultar detalle completo de los días recibidos</summary><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Clasificación por tipo de día</th><th>Clasificación por tipo de remuneración</th><th>Valor recibido</th><th>Fuente</th></tr></thead><tbody>{% for d in dias %}<tr{% if d.estado_captura != 'REGISTRADO' %} class="row-warn"{% endif %}><td>{{ d.fecha.strftime('%d/%m/%Y') }}</td><td>{{ d.clasificacion.get('tipo_dia') or 'Significado pendiente de leyenda' }}<small>{{ d.tipo or 'Sin determinar' }} · {{ d.estado_captura }}</small></td><td>{{ pago(d.clasificacion.get('es_remunerado')) }}</td><td>{{ d.codigo_reportado_raw if d.codigo_reportado_raw is not none else 'Vacío' }}</td><td>{{ d.hoja_origen or 'Sin hoja indicada' }} · {{ d.celda_origen or 'Sin celda indicada' }}</td></tr>{% endfor %}</tbody></table></div></details>
+</details></section>
+{% endblock %}

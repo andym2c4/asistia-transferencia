@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Reportes mensuales sintéticos · ASISTIA{% endblock %}
+{% block content %}
+<a href="{{ url_for('pages.experimental') }}">← Perfiles experimentales</a>
+<h1>Reportes mensuales sintéticos</h1>
+<p><a class="button primary" href="{{ url_for('pages.monitoreo', lote=lote.ml_lote_id, experimento=experimento.ml_experimento_id if experimento else none) }}">Abrir monitoreo de Isolation Forest</a></p>
+<div class="notice"><strong>Uso experimental.</strong> El guion se utiliza como cero supuesto. Vacíos y conteos incompatibles permanecen desconocidos. Estos reportes no acreditan asistencia diaria ni remuneración.</div>
+<div class="stats"><div class="stat"><strong>{{ total }}</strong><span>reportes institucionales por mes</span></div><div class="stat"><strong>{{ aptos }}</strong><span>con conteos utilizables</span></div><div class="stat"><strong>{{ total - aptos }}</strong><span>sin puntuación por datos insuficientes</span></div></div>
+<section class="panel">
+  <h2>Períodos del lote</h2>
+  <p>Creado {{ lote.creado_en.strftime('%d/%m/%Y %H:%M') }} · {{ lote.motivo }}</p>
+  <p>{% for origen,destino in lote.configuracion.mapa_periodos.items() %}<span class="badge">{{ origen }} → {{ destino }}</span> {% endfor %}</p>
+  {% if lote.padre_id %}<p><a href="{{ url_for('pages.experimental_lote', lote_id=lote.padre_id) }}">Ver lote de origen</a></p>{% endif %}
+  <details><summary>Redefinir los períodos</summary>
+    <p>Crea una versión con otro mes inicial. Conserva los conteos, el período fuente y el lote anterior. Cambiar las fechas no crea nuevas observaciones para evaluar el modelo.</p>
+    <form method="post" action="{{ url_for('pages.experimental_periodos', lote_id=lote.ml_lote_id) }}" data-async data-dirty>
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Nuevo primer mes <input type="month" name="inicio" value="{{ meses[0] }}" required></label>
+      <label>Motivo de la reasignación <input name="motivo" maxlength="4000" required></label>
+      <button>Crear versión con nuevos períodos</button>
+    </form>
+  </details>
+</section>
+<section class="panel">
+  <h2>Isolation Forest</h2>
+  <p>Aprende de los primeros meses de origen y comprueba los dos últimos por separado. Ordena perfiles atípicos para revisión; la puntuación no es una probabilidad de fraude.</p>
+  {% if experimento %}
+    <p><strong>Experimento ejecutado.</strong> Exactitud real y utilidad para RRHH: <strong>no medidas</strong>.</p>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Prueba sintética"><table>
+      <caption>Copias perturbadas seleccionadas en el cupo propuesto de revisión</caption>
+      <thead><tr><th>Comprobación</th><th>Isolation Forest</th><th>Referencia simple</th><th>Copias creadas</th><th>Cupo</th></tr></thead>
+      <tbody>{% for titulo,clave in [('Validación','validacion_sintetica'),('Prueba final','prueba_sintetica')] %}{% set s = experimento.manifiesto[clave] %}<tr><td>{{ titulo }}</td><td>{{ s.isolation_forest.copias_en_cupo }}</td><td>{{ s.referencia_simple.copias_en_cupo }}</td><td>{{ s.copias_inyectadas }}</td><td>{{ s.isolation_forest.cupo_revision }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="muted">Son alteraciones controladas de conteos. La base no tiene etiquetas reales; este resultado no mide detección de faltas ni fraude. El cupo del 10 % es una propuesta técnica.</p>
+    <p><a class="button" href="{{ url_for('pages.experimental_paquete', experimento_id=experimento.ml_experimento_id) }}">Descargar expediente del experimento</a></p>
+    <details><summary>Particiones y alcance</summary><ul>{% for nombre,p in experimento.manifiesto.particiones.items() %}<li>{{ nombre|capitalize }}: {{ p.filas }} perfiles; {{ p.ies }} instituciones; {{ p.ies_no_vistas_en_entrenamiento }} instituciones nuevas respecto al entrenamiento.</li>{% endfor %}</ul><p>El corpus fue utilizado durante el desarrollo. Esta reserva temporal no equivale a validación independiente con RRHH. Los indicadores de revisión muestran diferencias respecto a una referencia simple.</p></details>
+  {% else %}
+    <p>El modelo todavía no se ha ejecutado para esta versión.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('pages.experimental_entrenar', lote_id=lote.ml_lote_id) }}" data-async data-dirty><input type="hidden" name="csrf" value="{{ csrf }}"><button>{{ 'Comprobar experimento existente' if experimento else 'Ejecutar experimento' }}</button></form>
+</section>
+<section class="panel">
+  <h2>Consultar las instituciones</h2>
+  <form method="get" class="scope">
+    <label>Mes de destino <select name="mes">{% for m in meses %}<option {% if mes_elegido == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></label>
+    <label>Nivel <select name="nivel_filtro"><option value="TODOS">Todos los niveles</option>{% for codigo,nombre in niveles.items() %}<option value="{{ codigo }}" {% if codigo == nivel_filtro %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select></label>
+    <button>Ver reportes</button>
+  </form>
+  <p>{{ visibles }} reportes en este filtro. El puesto corresponde al mes completo, antes del filtro por nivel.</p>
+  <p><a href="{{ url_for('pages.experimental_csv', lote_id=lote.ml_lote_id) }}">Descargar todos los meses en CSV</a></p>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Reportes institucionales"><table>
+    <thead><tr><th>Institución</th><th>Código / anexo</th><th>Nivel</th><th>Mes fuente</th><th>Registros laborales</th><th>Perfil</th><th>Revisar</th></tr></thead>
+    <tbody>{% for r in reportes %}<tr><td>{{ r.nombre_ie }}</td><td>{{ r.cod_mod }} / {{ r.anexo }}</td><td>{{ r.nivel }}</td><td>{{ r.periodo_fuente.strftime('%Y-%m') }}</td><td>{{ r.datos.registros_laborales }}</td><td>{% if r.puntuacion %}Puesto {{ r.puntuacion.puesto }} · {{ '%.3f'|format(r.puntuacion.score_if) }}{% if r.puntuacion.en_cupo %}<br><span class="badge">Cupo propuesto de revisión</span>{% endif %}{% elif not r.datos.apto_modelo %}Sin conteos utilizables{% else %}Sin experimento{% endif %}</td><td><a href="{{ url_for('pages.experimental_reporte', reporte_id=r.ml_reporte_mensual_id) }}">Ver conteos y fuente</a></td></tr>{% else %}<tr><td colspan="7">No hay reportes en esta página. Cambia el filtro o vuelve a la página anterior.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p>{% if pagina > 1 %}<a href="{{ url_for('pages.experimental_lote', lote_id=lote.ml_lote_id, mes=mes_elegido, nivel_filtro=nivel_filtro, pagina=pagina-1) }}">← Anterior</a> · {% endif %}Página {{ pagina }}{% if pagina * 40 < visibles %} · <a href="{{ url_for('pages.experimental_lote', lote_id=lote.ml_lote_id, mes=mes_elegido, nivel_filtro=nivel_filtro, pagina=pagina+1) }}">Siguiente →</a>{% endif %}</p>
+</section>
+<section class="panel"><h2>Cobertura de la fuente</h2><p>{{ lote.manifiesto.filas_leidas }} filas leídas = {{ lote.manifiesto.filas_aceptadas }} aceptadas + {{ lote.manifiesto.filas_excluidas }} excluidas.</p>
+<ul>{% for motivo,n in lote.manifiesto.exclusiones_por_motivo.items() %}<li>{{ motivo|replace('_',' ')|capitalize }}: {{ n }}</li>{% endfor %}</ul><p>Las exclusiones y sus localizadores están en el expediente. Las fuentes permanecen accesibles desde cada reporte.</p></section>
+{% endblock %}

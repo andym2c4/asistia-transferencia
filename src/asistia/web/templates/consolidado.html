@@ -1,0 +1,25 @@
+{% extends 'base.html' %}{% from 'macros.html' import hidden,badge,empty with context %}{% from 'inline_table.html' import inline_table %}
+{% block scripts %}<script defer src="{{ url_for('static',filename='inline_tables.js') }}"></script>{% endblock %}
+{% block content %}
+<div class="page-heading"><div><span class="eyebrow">{{ niveles[nivel] }} · {{ periodo.strftime('%m/%Y') }}</span><h1>Consolidado</h1><p>Prepara y descarga una versión con sus fuentes y decisiones conservadas.</p></div></div>
+<div class="review-grid"><section class="panel"><h2>Condiciones de revisión</h2><p><strong>Digitalización revisada y cruces atendidos: {{ 'Sí' if revisable else 'Pendiente' }}</strong></p><p>{{ reportes|length }} reportes de las series conocidas.</p><a href="{{ url_for('pages.revision') }}">Consultar revisión</a></section>
+<section class="panel"><h2>Cobertura del ámbito</h2><p><strong>Aún no calculable</strong></p><p>Falta el listado de unidades esperadas validado por RRHH. Una salida revisada describe los reportes incluidos; no afirma cobertura completa de la UGEL.</p></section></div>
+<section class="panel"><h2>Coherencia antes de la salida</h2><p>Resuelve los casos pendientes y completa la información del cruce antes de preparar una versión revisada.</p>
+{% if reportes %}{% call inline_table('consolidado-coherencia',['Institución / reporte','Estado del cruce','Casos pendientes','Cruces sin evaluar'],'Coherencia antes de la salida') %}
+{% for r in reportes %}{% set c=coherencias[r.reporte_asistencia_id|string] %}<tr>
+<td data-value="{{ r.nombre_ie }}"><a href="{{ url_for('pages.reporte',rid=r.reporte_asistencia_id) }}#coherencia">{{ r.nombre_ie }}</a><small>{{ r.turno }} · reporte versión {{ r.version }}</small></td>
+<td>{{ 'Cruce sin pendientes' if c.listo else 'Por atender' }}</td><td>{{ c.pendientes }}</td><td>{{ c.no_evaluables }}</td>
+</tr>{% endfor %}{% endcall %}{% else %}<p>Sin reportes en este ámbito.</p>{% endif %}</section>
+<section class="panel"><h2>Preparar una nueva versión</h2><p>Un borrador conserva pendientes y exclusiones. «Revisado aquí» registra revisión local; el trámite ante la DRE continúa por el circuito habitual.</p>
+<details><summary>Calendarios que se usarán para los días esperados</summary><p>La revisión de reportes no aprueba calendarios. Su estado se conserva en la salida; las fechas no determinables se presentan como desconocidas.</p>
+{% if calendarios_aplicables %}{% call inline_table('consolidado-calendarios',['Institución','Versión de calendario','Estado'],'Calendarios que se usarán') %}
+{% for c in calendarios_aplicables %}<tr><td>{{ c.nombre_ie }}</td><td>{% if c.version_id %}<a href="{{ url_for('pages.calendario',cvid=c.version_id) }}">{{ c.version }}</a>{% else %}Sin calendario{% endif %}</td><td>{{ c.estado if c.version_id else 'Sin calendario disponible' }}</td></tr>{% endfor %}
+{% endcall %}{% else %}<p>Sin reportes para determinar calendarios aplicables.</p>{% endif %}</details>
+<div class="actions"><form method="post" action="{{ url_for('pages.generar') }}" data-async>{{ hidden() }}<input type="hidden" name="estado" value="BORRADOR"><button {% if not reportes %}disabled{% endif %}>Generar borrador</button></form>
+<form method="post" action="{{ url_for('pages.generar') }}" data-async>{{ hidden() }}<input type="hidden" name="estado" value="REVISADO"><button class="primary" {% if not revisable %}disabled aria-describedby="condicion-salida"{% endif %}>Preparar versión revisada</button></form></div>
+{% if not revisable %}<p id="condicion-salida" class="muted">Para preparar una versión revisada, abre los reportes y registra su revisión con las identidades, observaciones críticas y coherencia con el calendario resueltas.</p>{% endif %}</section>
+<section class="panel"><h2>Versiones conservadas</h2>{% if salidas %}
+{% call inline_table('consolidado-versiones',['Versión','Preparada el','Estado','Preparada por','Personas distintas','Filas de vínculos'],'Versiones conservadas') %}
+{% for s in salidas %}<tr><td data-value="{{ s.version }}"><a href="{{ url_for('pages.salida',sid=s.web_salida_id) }}" aria-label="Ver y descargar versión {{ s.version }}">{{ s.version }} · Ver y descargar</a></td><td data-sort-value="{{ s.creado_en.isoformat() }}">{{ s.creado_en.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ badge(s.estado_revision) }}</td><td>{{ s.autor }}</td><td>{{ s.manifiesto.personas_distintas }}</td><td>{{ s.manifiesto.filas_detalle }}</td></tr>{% endfor %}
+{% endcall %}{% else %}{{ empty('Todavía no hay salidas conservadas','Prepara un borrador para revisar su contenido.') }}{% endif %}</section>
+{% endblock %}

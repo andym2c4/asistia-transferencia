@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% from 'macros.html' import hidden with context %}
+{% block content %}
+<a href="{{ url_for('pages.institucion',iid=institucion_destino.institucion_educativa_id) }}#calendario-institucion-titulo">← Volver a la institución</a>
+<div class="page-heading"><div><h1>Cargar calendario</h1><p>{{ institucion_destino.nombre_ie }} · {{ institucion_destino.cod_mod }} · anexo {{ institucion_destino.anexo }}</p></div></div>
+<section class="panel"><h2>Documento original</h2><p>La institución y el año se leen del archivo. Comprueba el resultado antes de confirmar la calendarización.</p>
+<form method="post" action="{{ url_for('pages.cargar_calendario',iid=institucion_destino.institucion_educativa_id) }}" enctype="multipart/form-data" data-async class="fields">
+{{ hidden() }}<input type="hidden" name="tipo" value="calendario">
+<label for="archivos">Calendario original<input id="archivos" type="file" name="archivos" required aria-describedby="calendario-formatos"></label>
+<p class="small muted" id="calendario-formatos">Excel, PDF, imagen o Word · un archivo de hasta 20 MB.</p>
+<details><summary>Indicar recepción real, si se conoce</summary><label>Fecha y hora de recepción<input type="datetime-local" name="recibido_real_en"><small>Hora de Perú. Deja vacío si no se conoce.</small></label></details>
+<div class="actions"><button class="primary">Cargar y procesar</button><span class="form-status" role="status"></span></div>
+</form></section>
+{% endblock %}

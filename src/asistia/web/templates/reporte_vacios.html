@@ -1,0 +1,20 @@
+<article id="vacios-grupo" data-report-case="vacios-grupo">
+  <h3>Revisar vacíos en grupo</h3>
+  <p>Selecciona los vacíos de las fechas en que no correspondía asistir. Se guardarán como <strong>No aplica</strong>, conservando el valor recibido. Esto no registra una falta ni determina la remuneración.</p>
+  <form method="post" action="{{ url_for('pages.revisar_vacios',rid=reporte.reporte_asistencia_id) }}" data-async data-urlencoded data-dirty data-report-form data-vacios-form>
+    {{ hidden(huella) }}
+    <div class="actions report-bulk-tools"><button type="button" data-vacios-all>Seleccionar todos los vacíos ({{ revision.total_vacios }})</button><button type="button" data-vacios-none>Quitar selección</button></div>
+    <p class="small">Puedes elegir por fecha o por persona. En la tabla, haz clic en ∅ para añadir o retirar ese vacío.</p>
+    <div class="report-bulk-list" tabindex="0" aria-label="Vacíos disponibles por fecha">
+    {% for fecha,filas in revision.vacios.items() %}
+      <fieldset data-vacios-group><legend>{{ fecha.strftime('%d/%m/%Y') }} · {{ ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'][fecha.weekday()] }} <button type="button" data-vacios-date aria-pressed="false">Seleccionar {{ filas|length }} vacíos</button></legend>
+      {% if filas|selectattr('esperado','sameas',true)|list %}<p class="small">Hay asistencia esperada: coteja el calendario antes de clasificar esta fecha.</p>{% elif filas|selectattr('esperado','none')|list %}<p class="small muted">La asistencia esperada en esta fecha aún no está determinada.</p>{% endif %}
+      {% for d in filas %}<label><input type="checkbox" name="dias" value="{{ d.id }}" data-vacios-item data-date="{{ fecha.isoformat() }}" data-expected="{{ 'true' if d.esperado is sameas true else 'false' if d.esperado is sameas false else 'unknown' }}"> <span>{{ d.nombre }} <small>· fila {{ d.fila or 'sin número' }}</small></span></label>{% endfor %}
+      </fieldset>
+    {% endfor %}
+    </div>
+    <p data-vacios-summary role="status" aria-live="polite">Selecciona los vacíos que quieres clasificar.</p>
+    <label>Comentario común (opcional)<textarea name="motivo" maxlength="4000" rows="2" placeholder="Por ejemplo: fechas sin actividad, cotejadas con el calendario de la institución."></textarea></label>
+    <div class="actions"><button class="primary" data-vacios-save>Guardar: no correspondía asistir</button><button type="button" data-vacios-cancel>Cancelar selección</button></div>
+  </form>
+</article>

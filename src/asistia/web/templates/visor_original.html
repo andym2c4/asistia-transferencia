@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Documento original · ASISTIA</title>
+<script src="{{ url_for('static',filename='tema.js') }}"></script><script defer src="{{ url_for('static',filename='visor_original.js') }}"></script><link rel="stylesheet" href="{{ url_for('static',filename='app.css') }}"></head>
+<body class="original-viewer"><main data-original-viewer data-manifest="{{ manifest_url }}">
+<div class="original-toolbar" aria-label="Controles del visor">
+<label data-sheet-control hidden>Hoja<select data-viewer-sheet aria-label="Hoja del documento"></select></label>
+<div class="original-pages" data-page-control hidden><button type="button" data-page-prev aria-label="Página anterior">←</button><label>Página<select data-viewer-page aria-label="Página del documento"></select></label><button type="button" data-page-next aria-label="Página siguiente">→</button></div>
+<label>Zoom<select data-viewer-zoom><option value="fit">Ajustar al ancho</option><option value=".5">50 %</option><option value="1">100 %</option><option value="1.5">150 %</option><option value="2">200 %</option><option value="3">300 %</option></select></label>
+<button type="button" data-rotate="-90" aria-label="Girar a la izquierda 90 grados">↶</button><button type="button" data-rotate="90" aria-label="Girar a la derecha 90 grados">↷</button><button type="button" data-rotate-reset title="Restablecer orientación">0°</button>
+<button type="button" data-viewer-fullscreen>Pantalla completa</button><span class="small muted">Solo lectura</span>
+<a href="{{ original_url }}">Descargar original</a>
+{% if textual_url %}<a class="small" href="{{ textual_url }}">Lectura textual</a>{% endif %}
+</div>
+<p class="original-status" data-viewer-status role="status" aria-live="polite">Preparando la vista del documento…</p><button type="button" data-viewer-retry hidden>Reintentar</button>
+<div class="original-viewport" data-viewer-scroll tabindex="0" role="region" aria-label="Documento original de solo lectura; usa las flechas para desplazarte"><div class="original-image-stage" data-viewer-stage><img data-viewer-image alt="Representación visual del documento original" draggable="false" hidden></div></div>
+<noscript><p>Activa JavaScript para usar el visor o descarga el documento original.</p></noscript>
+</main></body></html>
